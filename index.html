@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Johnny GPT — Oh Mama Edition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bowlby+One+SC&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-warm: #FFE9C4;
+  --bg-cream: #FFF4D6;
+  --sidebar-bg: #1A1F2E;
+  --sidebar-bg-2: #252B3D;
+  --yellow: #FFD93D;
+  --yellow-bright: #FFE54C;
+  --yellow-dark: #D4A700;
+  --pink: #FF3D7F;
+  --pink-dark: #C8285F;
+  --teal: #2EC4B6;
+  --teal-dark: #1A8B7E;
+  --black: #1A1A1A;
+  --cream: #FFF8E7;
+  --red: #E63946;
+}
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--bg-warm);
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(255, 61, 127, 0.10) 0%, transparent 45%),
+    radial-gradient(circle at 80% 70%, rgba(46, 196, 182, 0.10) 0%, transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(255, 217, 61, 0.15) 0%, transparent 60%);
+  color: var(--black);
+  position: relative;
+}
+
+/* Canvas handles all background graphics */
+#bg-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+/* ============ SIDEBAR ============ */
+.sidebar {
+  background: var(--sidebar-bg);
+  background-image: linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-2) 100%);
+  color: var(--cream);
+  display: flex;
+  flex-direction: column;
+  border-right: 4px solid var(--black);
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'><circle cx='20' cy='20' r='1.5' fill='%23FFD93D' opacity='0.15'/></svg>");
+  background-size: 30px 30px;
+  pointer-events: none;
+}
+
+.logo {
+  font-family: 'Bowlby One SC', cursive;
+  font-size: 26px;
+  color: var(--yellow);
+  padding: 22px 20px 18px;
+  text-align: center;
+  letter-spacing: 1px;
+  text-shadow: 3px 3px 0 var(--pink), 6px 6px 0 var(--black);
+  border-bottom: 3px solid var(--yellow);
+  position: relative;
+  z-index: 1;
+}
+
+.logo .sub {
+  display: block;
+  font-family: 'Nunito', sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--pink);
+  text-shadow: none;
+  letter-spacing: 2px;
+  margin-top: 6px;
+  text-transform: uppercase;
+}
+
+.new-chat-btn {
+  margin: 16px;
+  padding: 13px 16px;
+  background: var(--yellow);
+  color: var(--black);
+  border: 3px solid var(--black);
+  border-radius: 12px;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 900;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 0 var(--black);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  z-index: 1;
+}
+
+.new-chat-btn:hover {
+  background: var(--yellow-bright);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--black);
+}
+
+.new-chat-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--black);
+}
+
+.new-chat-btn.pulse {
+  animation: newChatPulse 0.5s ease;
+}
+@keyframes newChatPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.new-chat-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.chat-history {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 12px 12px;
+  position: relative;
+  z-index: 1;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chat-history::-webkit-scrollbar { width: 8px; }
+.chat-history::-webkit-scrollbar-track { background: transparent; }
+.chat-history::-webkit-scrollbar-thumb {
+  background: var(--yellow-dark);
+  border-radius: 4px;
+}
+
+.history-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--yellow);
+  padding: 14px 8px 8px;
+  opacity: 0.7;
+}
+
+.history-item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--cream);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  margin-bottom: 3px;
+  border: 2px solid transparent;
+  position: relative;
+}
+
+.history-item:hover {
+  background: rgba(255, 217, 61, 0.12);
+  border-color: rgba(255, 217, 61, 0.25);
+}
+
+.history-item.active {
+  background: rgba(255, 217, 61, 0.18);
+  border-color: var(--yellow);
+}
+
+.history-item.active::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 60%;
+  background: var(--pink);
+  border-radius: 0 4px 4px 0;
+}
+
+.history-item svg {
+  width: 14px;
+  height: 14px;
+  color: var(--pink);
+  flex-shrink: 0;
+}
+
+.history-item-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-footer {
+  padding: 14px 16px;
+  border-top: 2px solid rgba(255, 217, 61, 0.25);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--cream);
+  position: relative;
+  z-index: 1;
+  background: rgba(0,0,0,0.2);
+}
+
+.avatar-mini {
+  width: 32px;
+  height: 38px;
+  flex-shrink: 0;
+}
+
+.avatar-mini svg { width: 100%; height: 100%; }
+
+.sidebar-footer-info { flex: 1; min-width: 0; }
+.sidebar-footer-info .name { font-weight: 800; font-size: 13px; }
+.sidebar-footer-info .plan { font-size: 10px; opacity: 0.7; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ============ MAIN AREA ============ */
+.main {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+.topbar {
+  background: var(--cream);
+  border-bottom: 4px solid var(--black);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.08);
+  z-index: 2;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.topbar-title {
+  font-family: 'Bowlby One SC', cursive;
+  font-size: 20px;
+  color: var(--black);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  letter-spacing: 0.5px;
+}
+
+.topbar-title svg {
+  width: 26px;
+  height: 31px;
+}
+
+.topbar-badge {
+  background: var(--pink);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border: 2px solid var(--black);
+  box-shadow: 0 2px 0 var(--black);
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.topbar-btn {
+  background: var(--cream);
+  border: 2px solid var(--black);
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  box-shadow: 0 3px 0 var(--black);
+  color: var(--black);
+}
+
+.topbar-btn:hover {
+  background: var(--yellow);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 0 var(--black);
+}
+
+.topbar-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--black);
+}
+
+.topbar-btn svg { width: 18px; height: 18px; }
+
+.hamburger { display: none; }
+
+/* ============ CHAT AREA ============ */
+.chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 24px 20px;
+  scroll-behavior: smooth;
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chat-area::-webkit-scrollbar { width: 12px; }
+.chat-area::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
+.chat-area::-webkit-scrollbar-thumb {
+  background: var(--yellow);
+  border: 2px solid var(--black);
+  border-radius: 6px;
+}
+
+.messages-container {
+  max-width: 820px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.messages-container.switching {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+/* Welcome screen */
+.welcome-screen {
+  text-align: center;
+  padding: 40px 20px 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  animation: fadeIn 0.6s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.welcome-avatar {
+  width: 120px;
+  height: 144px;
+  animation: bounce 2.5s ease-in-out infinite;
+  filter: drop-shadow(4px 4px 0 var(--black));
+  will-change: transform;
+}
+
+.welcome-avatar svg { width: 100%; height: 100%; }
+
+@keyframes bounce {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-3deg); }
+  50% { transform: translate3d(0, -12px, 0) rotate(3deg); }
+}
+
+.welcome-title {
+  font-family: 'Bowlby One SC', cursive;
+  font-size: 44px;
+  color: var(--black);
+  text-shadow: 3px 3px 0 var(--pink), 6px 6px 0 var(--yellow);
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+.welcome-subtitle {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--black);
+  max-width: 520px;
+  line-height: 1.5;
+}
+
+.welcome-subtitle .accent {
+  color: var(--pink);
+  font-weight: 900;
+  background: var(--yellow);
+  padding: 2px 8px;
+  border: 2px solid var(--black);
+  border-radius: 6px;
+  box-shadow: 0 2px 0 var(--black);
+  display: inline-block;
+  margin: 0 2px;
+}
+
+.suggestion-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 8px;
+  max-width: 700px;
+}
+
+.chip {
+  background: white;
+  border: 3px solid var(--black);
+  padding: 11px 18px;
+  border-radius: 30px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 var(--black);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Nunito', sans-serif;
+  color: var(--black);
+}
+
+.chip:hover {
+  background: var(--yellow);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--black);
+}
+
+.chip:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--black);
+}
+
+.chip-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--pink);
+  border-radius: 50%;
+  border: 1.5px solid var(--black);
+}
+
+/* ============ MESSAGE BUBBLES ============ */
+.message {
+  display: flex;
+  gap: 14px;
+  animation: slideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  align-items: flex-start;
+  will-change: transform, opacity;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translate3d(0, 20px, 0) scale(0.95); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+.message-avatar {
+  width: 40px;
+  height: 48px;
+  border-radius: 12px;
+  border: 3px solid var(--black);
+  flex-shrink: 0;
+  box-shadow: 0 3px 0 var(--black);
+  overflow: hidden;
+  background: var(--yellow);
+}
+
+.message-avatar.user {
+  background: var(--teal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 900;
+  font-size: 18px;
+  font-family: 'Bowlby One SC', cursive;
+}
+
+.message-avatar.ai {
+  background: var(--cream);
+  padding: 0;
+}
+
+.message-avatar.ai svg { width: 100%; height: 100%; display: block; }
+
+.message-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.message-name {
+  font-weight: 800;
+  font-size: 12px;
+  color: var(--black);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.message-name.ai { color: var(--pink-dark); }
+.message-name .name-badge {
+  background: var(--pink);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  border: 1.5px solid var(--black);
+}
+
+.message-bubble {
+  padding: 14px 18px;
+  border-radius: 16px;
+  border: 3px solid var(--black);
+  font-size: 15px;
+  line-height: 1.6;
+  box-shadow: 0 4px 0 var(--black);
+  word-wrap: break-word;
+  font-weight: 600;
+}
+
+.message.user .message-bubble {
+  background: var(--yellow);
+  border-bottom-left-radius: 4px;
+}
+
+.message.ai .message-bubble {
+  background: white;
+  border-bottom-left-radius: 4px;
+  position: relative;
+}
+
+/* Typing indicator */
+.typing-bubble {
+  padding: 16px 20px;
+  background: white;
+  border: 3px solid var(--black);
+  border-radius: 16px;
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 4px 0 var(--black);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.typing-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--pink-dark);
+  font-style: italic;
+}
+
+.typing-dots {
+  display: flex;
+  gap: 5px;
+  margin-left: 4px;
+}
+
+.typing-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--pink);
+  border-radius: 50%;
+  border: 1.5px solid var(--black);
+  animation: typingBounce 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translate3d(0, 0, 0); }
+  30% { transform: translate3d(0, -9px, 0); }
+}
+
+/* ============ INPUT AREA ============ */
+.input-area {
+  padding: 14px 24px 20px;
+  background: var(--cream);
+  border-top: 4px solid var(--black);
+  position: relative;
+  z-index: 2;
+}
+
+.input-container {
+  max-width: 820px;
+  margin: 0 auto;
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.input-wrap {
+  flex: 1;
+  position: relative;
+  background: white;
+  border: 3px solid var(--black);
+  border-radius: 16px;
+  box-shadow: 0 4px 0 var(--black);
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.input-wrap:focus-within {
+  background: var(--yellow-bright);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 0 var(--black);
+}
+
+#message-input {
+  width: 100%;
+  border: none;
+  padding: 14px 18px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  background: transparent;
+  outline: none;
+  resize: none;
+  min-height: 50px;
+  max-height: 150px;
+  color: var(--black);
+  line-height: 1.4;
+}
+
+#message-input::placeholder {
+  color: rgba(0,0,0,0.45);
+  font-style: italic;
+  font-weight: 600;
+}
+
+.send-btn {
+  width: 56px;
+  height: 56px;
+  background: var(--pink);
+  color: white;
+  border: 3px solid var(--black);
+  border-radius: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 0 var(--black);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.send-btn:hover:not(:disabled) {
+  background: var(--pink-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--black);
+}
+
+.send-btn:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--black);
+}
+
+.send-btn:disabled {
+  background: #BBB;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 4px 0 var(--black);
+}
+
+.send-btn svg { width: 22px; height: 22px; }
+
+.input-hint {
+  text-align: center;
+  font-size: 11px;
+  color: rgba(0,0,0,0.55);
+  margin-top: 10px;
+  font-weight: 700;
+  max-width: 820px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.input-hint .hint-accent {
+  color: var(--pink);
+  font-weight: 900;
+}
+
+/* Avatar wiggle */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-8deg); }
+  40% { transform: rotate(6deg); }
+  60% { transform: rotate(-4deg); }
+  80% { transform: rotate(2deg); }
+}
+
+.wiggle { animation: wiggle 0.6s ease-in-out; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .app { grid-template-columns: 1fr; }
+
+  .sidebar {
+    position: fixed;
+    left: -280px;
+    top: 0;
+    bottom: 0;
+    width: 280px;
+    z-index: 100;
+    transition: left 0.3s ease;
+  }
+
+  .sidebar.open { left: 0; }
+  .hamburger { display: flex; }
+  .welcome-title { font-size: 32px; }
+  .welcome-avatar { width: 100px; height: 120px; }
+  .topbar { padding: 12px 16px; }
+  .topbar-title { font-size: 16px; }
+  .topbar-badge { display: none; }
+  .chat-area { padding: 20px 14px; }
+  .input-area { padding: 12px 14px 16px; }
+  .messages-container { gap: 16px; }
+}
+
+/* Overlay for mobile sidebar */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 99;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.overlay.show {
+  display: block;
+  opacity: 1;
+}
+
+/* Info modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-backdrop.show { display: flex; }
+
+.modal {
+  background: var(--cream);
+  border: 4px solid var(--black);
+  border-radius: 20px;
+  padding: 32px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 8px 0 var(--black);
+  text-align: center;
+  animation: modalPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalPop {
+  from { transform: scale(0.7); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal h2 {
+  font-family: 'Bowlby One SC', cursive;
+  font-size: 28px;
+  color: var(--black);
+  text-shadow: 2px 2px 0 var(--pink);
+  margin-bottom: 12px;
+}
+
+.modal p {
+  font-size: 15px;
+  line-height: 1.6;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.modal .modal-close {
+  margin-top: 18px;
+  padding: 12px 24px;
+  background: var(--yellow);
+  border: 3px solid var(--black);
+  border-radius: 10px;
+  font-weight: 900;
+  cursor: pointer;
+  font-family: 'Nunito', sans-serif';
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 0 var(--black);
+  font-size: 13px;
+}
+
+.modal .modal-close:hover { background: var(--yellow-bright); transform: translateY(-2px); box-shadow: 0 6px 0 var(--black); }
+.modal .modal-close:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--black); }
+
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div class="overlay" id="overlay"></div>
+
+<div class="app">
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="logo">
+      JOHNNY GPT
+      <span class="sub">Oh Mama Edition</span>
+    </div>
+
+    <button class="new-chat-btn" id="new-chat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      New Chat, Baby!
+    </button>
+
+    <div class="chat-history" id="chat-history">
+      <div class="history-label">Recent Chats</div>
+      <div class="history-item active" data-id="impress">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span class="history-item-text">How to impress the ladies</span>
+      </div>
+      <div class="history-item" data-id="hairgel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span class="history-item-text">Best hair gel, ranked</span>
+      </div>
+      <div class="history-item" data-id="lasagna">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span class="history-item-text">Mama's lasagna secrets</span>
+      </div>
+      <div class="history-item" data-id="gymlines">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span class="history-item-text">Gym pickup lines 101</span>
+      </div>
+      <div class="history-item" data-id="mirrors">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span class="history-item-text">Why mirrors love me</span>
+      </div>
+      <div class="history-item" data-id="posing">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span class="history-item-text">Posing tips for beginners</span>
+      </div>
+      <div class="history-item" data-id="rhymes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span class="history-item-text">Rhymes with 'handsome'</span>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="avatar-mini">
+        <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 28 40 Q 28 75 50 82 Q 72 75 72 40 Z" fill="#FFE0B2" stroke="#1A1A1A" stroke-width="3" stroke-linejoin="round"/>
+          <path d="M 28 45 C 10 25 20 5 45 8 C 65 5 80 25 72 45 L 75 62 L 68 55 C 65 45 58 32 50 32 C 42 32 35 45 32 55 L 25 62 Z" fill="#FFD93D" stroke="#1A1A1A" stroke-width="3" stroke-linejoin="round"/>
+          <rect x="24" y="51" width="24" height="9" rx="2" fill="#1A1A1A"/>
+          <rect x="52" y="51" width="24" height="9" rx="2" fill="#1A1A1A"/>
+          <rect x="48" y="53" width="4" height="3" fill="#1A1A1A"/>
+          <path d="M 42 70 Q 50 75 58 70" fill="none" stroke="#1A1A1A" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M 30 80 L 15 120 L 85 120 L 70 80 L 50 90 Z" fill="#1A1A1A"/>
+        </svg>
+      </div>
+      <div class="sidebar-footer-info">
+        <div class="name">Johnny B.</div>
+        <div class="plan">Premium Handsome</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="topbar-btn hamburger" id="hamburger">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+            <path d="M3 12h18M3 6h18M3 18h18"/>
+          </svg>
+        </button>
+        <div class="topbar-title">
+          <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+            <path d="M 28 40 Q 28 75 50 82 Q 72 75 72 40 Z" fill="#FFE0B2" stroke="#1A1A1A" stroke-width="4" stroke-linejoin="round"/>
+            <path d="M 28 45 C 10 25 20 5 45 8 C 65 5 80 25 72 45 L 75 62 L 68 55 C 65 45 58 32 50 32 C 42 32 35 45 32 55 L 25 62 Z" fill="#FFD93D" stroke="#1A1A1A" stroke-width="4" stroke-linejoin="round"/>
+            <rect x="24" y="51" width="24" height="9" rx="2" fill="#1A1A1A"/>
+            <rect x="52" y="51" width="24" height="9" rx="2" fill="#1A1A1A"/>
+            <rect x="48" y="53" width="4" height="3" fill="#1A1A1A"/>
+            <path d="M 42 70 Q 50 75 58 70" fill="none" stroke="#1A1A1A" stroke-width="3" stroke-linecap="round"/>
+            <path d="M 30 80 L 15 120 L 85 120 L 70 80 L 50 90 Z" fill="#1A1A1A" stroke="#1A1A1A" stroke-width="4" stroke-linejoin="round"/>
+          </svg>
+          Bravo Chat
+        </div>
+        <span class="topbar-badge">100% Handsome</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="topbar-btn" id="clear-btn" title="Clear chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6M10 11v6M14 11v6"/>
+          </svg>
+        </button>
+        <button class="topbar-btn" id="info-btn" title="About">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4M12 8h.01"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="chat-area" id="chat-area">
+      <div class="messages-container" id="messages">
+        <!-- Welcome screen inserted by JS -->
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-container">
+        <div class="input-wrap">
+          <textarea id="message-input" placeholder="Ask Johnny anything, sugar..." rows="1"></textarea>
+        </div>
+        <button class="send-btn" id="send-btn" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+          </svg>
+        </button>
+      </div>
+      <div class="input-hint">Johnny may say something foolish, arrogant, or <span class="hint-accent">inappropriate</span>. That's just how he do. Press Enter to send.</div>
+    </div>
+  </main>
+</div>
+
+<!-- Info Modal -->
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal">
+    <h2>Hey, Mama!</h2>
+    <p style="font-weight:800;color:var(--pink-dark)">This is a parody, sugar.</p>
+    <p>Johnny GPT is a ChatGPT mockup that responds with Johnny Bravo-style jokes instead of actual answers. Don't take anything he says seriously. He doesn't.</p>
+    <p>Type anything in the box and prepare to be... underwhelmed but amused.</p>
+    <button class="modal-close" id="modal-close">Got it, pretty boy!</button>
+  </div>
+</div>
+
+<script>
+// ============ CANVAS BACKGROUND SYSTEM ============
+const bgCanvas = document.getElementById('bg-canvas');
+const bgCtx = bgCanvas.getContext('2d');
+let W, H;
+
+function resizeBgCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  W = window.innerWidth;
+  H = window.innerHeight;
+  bgCanvas.width = W * dpr;
+  bgCanvas.height = H * dpr;
+  bgCanvas.style.width = W + 'px';
+  bgCanvas.style.height = H + 'px';
+  bgCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to avoid compounding scale
+  bgCtx.scale(dpr, dpr);
+}
+
+window.addEventListener('resize', resizeBgCanvas);
+resizeBgCanvas();
+
+const bgShapes = [
+  { x: 0.08, y: 0.12, type: 'star5', color: 'rgba(255, 61, 127, 0.4)', size: 40, phase: 0 },
+  { x: 0.15, y: 0.70, type: 'ring_dot', color1: 'rgba(46, 196, 182, 0.4)', color2: 'rgba(255, 217, 61, 0.5)', size: 50, phase: -3 },
+  { x: 0.90, y: 0.25, type: 'star4', color: 'rgba(255, 217, 61, 0.5)', size: 35, phase: -6 },
+  { x: 0.92, y: 0.85, type: 'circle', color: 'rgba(255, 61, 127, 0.4)', size: 45, phase: -9 },
+  { x: 0.05, y: 0.45, type: 'star4', color: 'rgba(46, 196, 182, 0.4)', size: 30, phase: -12 }
+];
+
+const sparkles = [];
+
+function drawStar(ctx, cx, cy, spikes, outer, inner) {
+  let rot = Math.PI / 2 * 3;
+  let x = cx, y = cy;
+  const step = Math.PI / spikes;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - outer);
+  for (let i = 0; i < spikes; i++) {
+    x = cx + Math.cos(rot) * outer;
+    y = cy + Math.sin(rot) * outer;
+    ctx.lineTo(x, y);
+    rot += step;
+    x = cx + Math.cos(rot) * inner;
+    y = cy + Math.sin(rot) * inner;
+    ctx.lineTo(x, y);
+    rot += step;
+  }
+  ctx.lineTo(cx, cy - outer);
+  ctx.closePath();
+}
+
+function spawnSparkles(x, y) {
+  const colors = ['#FFD93D', '#FF3D7F', '#2EC4B6', '#FFE54C'];
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    const distance = 60 + Math.random() * 40;
+    sparkles.push({
+      x, y,
+      vx: Math.cos(angle) * distance * 0.03,
+      vy: Math.sin(angle) * distance * 0.03 - 1.5,
+      life: 1,
+      color: colors[i % colors.length],
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.2,
+      size: 6 + Math.random() * 3
+    });
+  }
+}
+
+let bgTime = 0;
+let lastTime = performance.now();
+
+function animateBg(now) {
+  const dt = Math.min((now - lastTime) / 16.666, 3); // Delta time, capped to avoid jumps
+  lastTime = now;
+  bgTime += dt / 60; // Convert to seconds roughly
+
+  bgCtx.clearRect(0, 0, W, H);
+
+  // 1. Atomic background pattern
+  bgCtx.save();
+  bgCtx.strokeStyle = 'rgba(255, 61, 127, 0.18)';
+  bgCtx.lineWidth = 1.5;
+  bgCtx.fillStyle = 'rgba(255, 61, 127, 0.18)';
+
+  const pSize = 140;
+  const pOffset = (bgTime * 2.33) % pSize; // Match original 60s linear drift speed
+
+  for (let x = -pSize; x < W + pSize; x += pSize) {
+    for (let y = -pSize; y < H + pSize; y += pSize) {
+      const cx = x + pOffset;
+      const cy = y + pOffset;
+      bgCtx.beginPath();
+      bgCtx.moveTo(cx + 50, cy + 15);
+      bgCtx.lineTo(cx + 55, cy + 40);
+      bgCtx.lineTo(cx + 80, cy + 45);
+      bgCtx.lineTo(cx + 60, cy + 55);
+      bgCtx.lineTo(cx + 65, cy + 80);
+      bgCtx.lineTo(cx + 50, cy + 65);
+      bgCtx.lineTo(cx + 35, cy + 80);
+      bgCtx.lineTo(cx + 40, cy + 55);
+      bgCtx.lineTo(cx + 20, cy + 45);
+      bgCtx.lineTo(cx + 45, cy + 40);
+      bgCtx.closePath();
+      bgCtx.stroke();
+      bgCtx.beginPath();
+      bgCtx.arc(cx + 50, cy + 50, 3, 0, Math.PI * 2);
+      bgCtx.fill();
+    }
+  }
+  bgCtx.restore();
+
+  // 2. Floating shapes
+  bgShapes.forEach(s => {
+    const baseX = s.x * W;
+    const baseY = s.y * H;
+    const y = baseY - Math.sin(bgTime * 0.314 + s.phase) * 15; // 0.314 = 20s cycle
+    const rot = Math.sin(bgTime * 0.314 + s.phase) * (15 * Math.PI / 180);
+
+    bgCtx.save();
+    bgCtx.translate(baseX, y);
+    bgCtx.rotate(rot);
+
+    if (s.type === 'star5') {
+      bgCtx.fillStyle = s.color;
+      drawStar(bgCtx, 0, 0, 5, s.size/2, s.size/4);
+      bgCtx.fill();
+    } else if (s.type === 'star4') {
+      bgCtx.fillStyle = s.color;
+      drawStar(bgCtx, 0, 0, 4, s.size/2, s.size/4);
+      bgCtx.fill();
+    } else if (s.type === 'ring_dot') {
+      bgCtx.strokeStyle = s.color1;
+      bgCtx.lineWidth = 3;
+      bgCtx.beginPath();
+      bgCtx.arc(0, 0, s.size/2, 0, Math.PI * 2);
+      bgCtx.stroke();
+      bgCtx.fillStyle = s.color2;
+      bgCtx.beginPath();
+      bgCtx.arc(0, 0, s.size/4, 0, Math.PI * 2);
+      bgCtx.fill();
+    } else if (s.type === 'circle') {
+      bgCtx.strokeStyle = s.color;
+      bgCtx.lineWidth = 2.5;
+      bgCtx.beginPath();
+      bgCtx.arc(0, 0, s.size/2, 0, Math.PI * 2);
+      bgCtx.stroke();
+    }
+    bgCtx.restore();
+  });
+
+  // 3. Sparkles
+  for (let i = sparkles.length - 1; i >= 0; i--) {
+    const p = sparkles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.1; // Gravity
+    p.rotation += p.rotSpeed;
+    p.life -= 0.02;
+
+    if (p.life <= 0) {
+      sparkles.splice(i, 1);
+      continue;
+    }
+
+    bgCtx.save();
+    bgCtx.translate(p.x, p.y);
+    bgCtx.rotate(p.rotation);
+    bgCtx.globalAlpha = Math.max(0, p.life);
+    bgCtx.fillStyle = p.color;
+    drawStar(bgCtx, 0, 0, 4, p.size, p.size / 2);
+    bgCtx.fill();
+    bgCtx.restore();
+  }
+
+  requestAnimationFrame(animateBg);
+}
+
+requestAnimationFrame(animateBg);
+
+
+// ============ JOHNNY BRAVO SVG (reusable) ============
+const johnnySVG = `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Face -->
+  <path d="M 28 40 Q 28 75 50 82 Q 72 75 72 40 Z" fill="#FFE0B2" stroke="#1A1A1A" stroke-width="3" stroke-linejoin="round"/>
+
+  <!-- Hair (Pompadour + Sideburns) -->
+  <path d="M 28 45
+           C 10 25 20 5 45 8
+           C 65 5 80 25 72 45
+           L 75 62 L 68 55
+           C 65 45 58 32 50 32
+           C 42 32 35 45 32 55
+           L 25 62 Z" fill="#FFD93D" stroke="#1A1A1A" stroke-width="3" stroke-linejoin="round"/>
+
+  <!-- Hair Swoosh Detail -->
+  <path d="M 40 18 C 50 10 60 15 65 25" fill="none" stroke="#D4A700" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Sunglasses -->
+  <rect x="24" y="51" width="24" height="9" rx="2" fill="#1A1A1A"/>
+  <rect x="52" y="51" width="24" height="9" rx="2" fill="#1A1A1A"/>
+  <rect x="48" y="53" width="4" height="3" fill="#1A1A1A"/>
+  <line x1="30" y1="52" x2="34" y2="58" stroke="white" stroke-width="1.5" opacity="0.7" stroke-linecap="round"/>
+  <line x1="58" y1="52" x2="62" y2="58" stroke="white" stroke-width="1.5" opacity="0.7" stroke-linecap="round"/>
+
+  <!-- Mouth -->
+  <path d="M 42 70 Q 50 75 58 70" fill="none" stroke="#1A1A1A" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Shirt -->
+  <path d="M 30 80 L 15 120 L 85 120 L 70 80 L 50 90 Z" fill="#1A1A1A" stroke="#1A1A1A" stroke-width="3" stroke-linejoin="round"/>
+</svg>`;
+
+// ============ PRE-BAKED CHAT HISTORIES ============
+const chatHistories = {
+  impress: [
+    { sender: 'user', text: "How do I impress the ladies, Johnny?" },
+    { sender: 'ai', text: "Oh sugar, you came to the RIGHT guy. Step one: hair. Step two: hair. Step three: MORE hair. Step four: flex. That's it. That's the whole tutorial. *hair flip* Anything else is just details, baby." },
+    { sender: 'user', text: "But what if she doesn't care about hair?" },
+    { sender: 'ai', text: "Then she's not the one, toots. Move on. There are plenty of fish in the sea, and I'm the catch of the day. The whole day. Possibly the whole week. I don't make the rules. I just benefit from them." },
+    { sender: 'user', text: "Any actual practical advice?" },
+    { sender: 'ai', text: "Fine, fine. Be confident. Even when you're wrong. ESPECIALLY when you're wrong. Confidence covers a multitude of sins, baby. Trust me — I sin constantly. *winks and adjusts collar*" }
+  ],
+  hairgel: [
+    { sender: 'user', text: "What's the best hair gel, Johnny?" },
+    { sender: 'ai', text: "ALL of them. I use them all. Simultaneously. My hair is 40% gel, 40% spray, 10% prayers, and 10% pure unbridled ego. It's a recipe, sugar. Don't write it down. It's classified. Mama said so." },
+    { sender: 'user', text: "Seriously though, which brand?" },
+    { sender: 'ai', text: "Seriously? The yellow one. No — the pink one. Wait, the one with the muscle man on the bottle. Actually, I just buy whatever mama picks up. She knows best. About hair. And everything. I'm 37. Don't do the math." },
+    { sender: 'user', text: "Has your hair ever failed you?" },
+    { sender: 'ai', text: "Once. In 2003. A windstorm. A TRAGIC windstorm. I wore a hat for three weeks. Mama said I looked 'dapper.' I looked like a sad detective. We do not speak of this. Ever. To anyone. *single tear*" }
+  ],
+  lasagna: [
+    { sender: 'user', text: "What's mama's lasagna secret?" },
+    { sender: 'ai', text: "Mama's lasagna? Oh, mama. *eyes water* It's love, sugar. And exactly seven cheeses. She won't tell me which seven. I've counted. There are SEVEN. She says it's a 'family secret.' I'm family! She still won't tell me. Rude." },
+    { sender: 'user', text: "Can you at least describe it?" },
+    { sender: 'ai', text: "Layers. Many layers. Like my personality. Cheesy, saucy, with a crispy top. Also like my personality. Mama says I have 'a lot going on.' She's not wrong. About the lasagna OR me. We're both complex dishes." },
+    { sender: 'user', text: "Will she ever share the recipe?" },
+    { sender: 'ai', text: "When I get married, she says. So... never. The recipe dies with her. Tragic. Almost as tragic as my love life. ALMOST. The lasagna situation is honestly sadder. Don't tell mama I said that." }
+  ],
+  gymlines: [
+    { sender: 'user', text: "Gym pickup lines, Johnny?" },
+    { sender: 'ai', text: "Oh, you want the masterclass. *cracks knuckles dramatically* 'Did you just squat? 'Cause you just lowered my standards.' 'Are you a dumbbell? 'Cause I wanna pick you up.' 'Is your name Cardio? 'Cause you take my breath away.' None of these work. I've tried. Many times. To many people." },
+    { sender: 'user', text: "What happens when you use them?" },
+    { sender: 'ai', text: "Glares. Sometimes a towel thrown at me. Once, a guy named Steve threw a 20-pound weight at my head. I dodged it. With STYLE. He was impressed. We're friends now. Platonically. He's married. To a woman. Who glares at me." },
+    { sender: 'user', text: "Any that actually worked?" },
+    { sender: 'ai', text: "'Hi, I'm Johnny.' Works 0% of the time. The pickup lines also work 0% of the time. So really, I'm consistent. Consistency is attractive. That's what mama says. About me. To me. While patting my head. I'm 37." }
+  ],
+  mirrors: [
+    { sender: 'user', text: "Why do mirrors love you?" },
+    { sender: 'ai', text: "Because I give them PURPOSE, sugar. Without me, they're just... glass. With me? ART. I walk past a mirror, it lights up. Scientifically proven. By me. Just now. In my head. Peer-reviewed by mama. She nodded." },
+    { sender: 'user', text: "How many mirrors do you own?" },
+    { sender: 'ai', text: "Forty-seven. Every room. Every hallway. The bathroom has nine. Mama said 'enough.' I said 'never enough.' She sighed. She sighs a lot lately. Probably pride. Definitely pride. What else would it be?" },
+    { sender: 'user', text: "What if mirrors could talk?" },
+    { sender: 'ai', text: "They'd say 'finally, someone worth reflecting.' I'm doing them a FAVOR, toots. They should pay me rent for the views I provide. *flexes at nearest reflective surface* The toaster agrees. It always agrees." }
+  ],
+  posing: [
+    { sender: 'user', text: "Posing tips, Johnny?" },
+    { sender: 'ai', text: "Buckle up, sugar. Lesson one: the Classic Flex. Right arm up, left hand on hip, chin DOWN, eyes UP. Mysterious. Smoldering. Hold for ten seconds. Cry a little if needed. I always cry a little. Tears of joy. At myself. It's healthy." },
+    { sender: 'user', text: "And lesson two?" },
+    { sender: 'ai', text: "The Hair Toss. Swipe hand through pompadour, look away casually, like you didn't just plan it for forty-five minutes. Practice in mirror. Always in mirror. Mirror is your best friend. Mirror is your ONLY friend. Hug your mirror. Not too tight. They break. I've broken three. We don't talk about it." },
+    { sender: 'user', text: "Any final tips?" },
+    { sender: 'ai', text: "Confidence, baby. Even when wrong. ESPECIALLY when wrong. The pose doesn't have to be right — it has to be COMMITTED. I commit to every pose. Even the bad ones. ESPECIALLY the bad ones. *poses badly on purpose* You're welcome. That'll be one compliment, please." }
+  ],
+  rhymes: [
+    { sender: 'user', text: "What rhymes with handsome, Johnny?" },
+    { sender: 'ai', text: "Oh, easy. Awesome. Blossom. Cross'em. Dross'em... that's not a word, but it rhymes. Loss 'em. Toss 'em. Basically anything ending in 'ossum.' I make up words all the time, sugar. Creative license. I'm an artist. A wordsmith. A wordsmith with great hair." },
+    { sender: 'user', text: "But what actually rhymes with it?" },
+    { sender: 'ai', text: "I just TOLD you. AWESOME. As in, 'Johnny is awesome.' It's a whole sentence AND a rhyme. I'm basically a poet. Mama says I should write greeting cards. I'm working on one. It's for myself. From myself. To myself. With love." },
+    { sender: 'user', text: "Is 'handsome' even a real rhyme word?" },
+    { sender: 'ai', text: "Words are just suggestions, toots. I am the dictionary now. If I say it rhymes, it rhymes. Johnny Bravo declares that 'handsome' rhymes with 'awesome,' 'gorgeous,' and 'me.' Case closed. Court adjourned. *bangs invisible gavel* Adjourned to go admire myself." }
+  ]
+};
+
+// ============ RESPONSE DATABASE (for live chats) ============
+const responses = {
+  default: [
+    "Oh, mama! Did you just ask ME a question? Well buckle up, sugar, 'cause the answer is gonna be smoother than my hair after a fresh can of hairspray! *flexes* The answer is... YES. Always yes. Unless you're asking if I've ever been turned down. Then the answer is also yes, but we don't talk about those times. *sniff*",
+    "Hey there, sweet cheeks! I'd love to answer that, but my calendar's booked solid with being handsome. Tomorrow? Also booked. Next week? Lookin' pretty booked. Try never. *winks and adjusts collar*",
+    "Listen, baby — I'm gonna level with ya. I have no idea what you just asked. But I LOOK like I do, and that's basically the same thing. Confidence is key! The key to MY heart, anyway. *kisses bicep*",
+    "Ooh, that's a tough one! Almost as tough as deciding which mirror to admire myself in first. Spoiler: it's all of them. Every mirror. Every day. Even the side of a toaster. Especially the side of a toaster.",
+    "Did someone say... a question? *gasps dramatically* Finally! A chance to flex my BRAIN muscles! Which, fun fact, are also located in my biceps. Science hasn't caught up yet. *double bicep pose*",
+    "Here's the thing, toots. I could give you a long, boring answer, OR I could flex for you. Which do you prefer? Wrong! Both! *flexes dramatically* You're welcome. That'll be one compliment, please.",
+    "You know what they say: 'When life gives you lemons, make lemonade.' I don't drink lemonade though. Bad for the figure. I drink protein shakes. Made of hairspray and confidence. Don't knock it 'til you try it.",
+    "The answer, my dear, is blowing in the wind. Like my luscious locks. Want to touch them? TOO BAD. Only mama touches the hair. And me. I touch the hair a lot. Like, a LOT a lot. It's a problem.",
+    "Look, I'd love to help, but I'm currently booked solid being this gorgeous. Try again in... never. Or five minutes. I get bored easy. Mostly bored of not being admired. ADMIRE ME. *poses*",
+    "Did I ever tell you about the time I almost dated a supermodel? Almost. She almost said yes. Then she almost didn't run away. The key word is 'almost.' I prefer to focus on the positive. *sniffles*",
+    "Why, I oughta— oh, sorry. Got distracted by my reflection in your screen. Is my hair okay? It's always okay. I just like checking. It's called 'maintenance,' sugar. Look it up. In a dictionary. Made of me.",
+    "Here's a joke for ya: What's black and white and red all over? A panda with a sunburn! Wait, that's not right. Whatever. I'm Johnny Bravo! I don't need jokes to be funny. I AM the joke! *laughs at own joke* ...that came out sadder than I intended.",
+    "Listen here, dollface. The answer is simple: it's ME. I'm the answer. I'm the question. I'm the test. I'm the grade. I'm the school. I'm the entire education system. Bow before my educational might! *hair toss*",
+    "You want the truth? You can't handle the truth! Mostly because I don't know it. But I look FABULOUS not knowing things. The best-looking ignorant person you'll ever meet. *grins confidently*",
+    "Ooh, tricky question! Almost as tricky as getting gum out of my hair. Don't ask how it got there. Okay fine, it was a kissing accident. With myself. In the mirror. The mirror won. We don't talk about it.",
+    "Did you know I can recite the alphabet backward? Z-Y-X-W... yeah, that's all I got. But I LOOK good doing it! That's the Bravo guarantee, sugar. Style over substance. Every. Single. Time.",
+    "Hey baby, are you a question? Because I'd love to answer you! Wait, that came out weird. Or did it? Yeah, it did. I'm not great at this. BUT I LOOK GREAT DOING IT! *winks and points*",
+    "Listen, sugar. I'm gonna be real with you for a sec. *leans in* Real handsome, that is. *grins* Okay, moment's over. Back to being conventionally handsome. The regular kind. *poses*",
+    "Oh, the answer? It's right here. *flexes left bicep* Nope, just muscles. Let me check the other one. *flexes right bicep* Also muscles. Wow, I'm ripped. What was the question again?",
+    "You know what, gorgeous? The answer is whatever makes you smile. And if THAT doesn't work, just look at me. I always make people smile. Or laugh. Or run. Either way, I leave an impression! *grins*",
+    "Mama always said, 'Johnny, you're special.' Then she'd hand me a juice box and tell me to play outside. I'm 37. The juice boxes are still happening. Don't judge me, sugar.",
+    "Listen, baby, I don't do math. I do MACHO. And by macho, I mean posing. Want to see? Too bad, here it comes anyway! *strikes a pose* There. Isn't that better than an answer?",
+    "Hey, that's a great question! Reminds me of me. Everything reminds me of me. Mirrors, puddles, shiny toasters, the back of a spoon... I'm everywhere if you look close enough! *winks at invisible camera*",
+    "Oh mama, you really make a guy think! Good thing I've got the brains AND the brawn. Mostly brawn. The brains are more of a side gig. Like a hobby. A really underdeveloped hobby. Anyway! *flexes*"
+  ],
+  date: [
+    "Did someone say... a DATE?! *hair flips dramatically* Listen, sugar, I've been on approximately 847 dates. None of them went well. But that's THEIR fault, not mine. I showed up. I posed. I left. Classic Johnny.",
+    "Oh, you wanna know about dating? Pull up a chair, baby. Actually, don't — chairs are for sitting, and sitting is bad for the posture. Stand. Like me. I always stand. Even in movie theaters. It's a problem.",
+    "Pickup line? I got a million of 'em, toots. 'Did it hurt? When you fell from heaven?' 'Are you a parking ticket? 'Cause you got FINE written all over you.' None of them work. But I deliver them with STYLE. *poses*",
+    "Listen, sweetcakes — I don't chase. I attract. Like a magnet. A really handsome magnet that lives with his mama. She makes great lasagna though. Just sayin'.",
+    "Dating tip from the master: always flex when entering a room. Double flex if it's a restaurant. Triple flex if she's already there looking bored. That last one happens a lot, actually. Hmm.",
+    "You know what they say about romance? Neither do I. But I watched a romantic comedy once. I cried. Then I flexed. Then I cried again. It was a confusing evening, sugar.",
+    "Mama always said I'd find the right person someday. She also said I should lower my standards. I told her my standards ARE low — they just have to be willing to date ME. *laughs then cries internally*",
+    "Listen, baby — I'm a romantic. I once bought a girl flowers. She used them to hit me. It was the most physical contact I'd had in years. I didn't wash that side of my face for a month.",
+    "Hey, gorgeous! Want to know the secret to my dating success? Trick question — I don't have any. But I LOOK like I do, and that's the Bravo guarantee! *winks at own reflection in your screen*"
+  ],
+  mama: [
+    "MAMA! *calls out dramatically* MAMA! The user is asking questions again! *looks around* Don't worry, mama, I got this! I always got this! ...Mama, where'd you go? MAMA?! Oh, she's at the store. She'll be back by four. She always is.",
+    "My mama? She's the best, sugar. Makes a mean lasagna. Wears curlers to bed. Says I'm handsome at least forty times a day. She's not wrong, but it's still nice to hear.",
+    "Mama always said, 'Johnny, you're special.' Then she'd add, 'Special needs.' I never understood that part. I'm pretty sure she was joking. Pretty sure. Like 70% sure. Maybe 60.",
+    "Don't tell mama I'm chatting with strangers online. She worries. Last time she caught me talking to a girl on the internet, she made me wear a helmet for a week. Indoors. It chafed.",
+    "Mama's cooking? Oh, mama. She makes the best spaghetti west of the Mississippi. Possibly east too. I haven't been east of the Mississippi. Mama says it's 'too dangerous.' I'm 37.",
+    "Listen, you can insult me all you want — actually no you can't, I'm gorgeous — but DON'T you dare insult mama. She's a saint. A saint who still cuts the crusts off my sandwiches. I'm 37!",
+    "Mama! *eyes water* She's the only woman who's ever truly understood me. Mostly because she has to. We live together. She's downstairs right now. HI MAMA! *waves at ceiling*"
+  ],
+  muscle: [
+    "MUSCLES?! Did someone say MUSCLES?! *flexes so hard a button pops off* Oh. That was my favorite shirt. It's fine. I have seventeen more just like it. All with the same popping issue. Worth it.",
+    "You wanna know about my workout routine, sugar? Step one: look in mirror. Step two: flex. Step three: cry a little at how beautiful I am. Step four: repeat. It's a full-body workout. Mostly the crying.",
+    "I lift, sugar. I lift heavy. Sometimes I lift two hairspray cans at once. Sometimes THREE. Mama saw me do four once and she called the doctor. He said I was 'fine.' See? Even doctors agree.",
+    "Bicep curls? Don't need 'em. My biceps curl themselves. From the sheer force of being awesome. It's science. Johnny science. Look it up. In a journal. Made of me.",
+    "I'm so ripped, toots, I once ripped a shirt just by breathing in. It was a small shirt. Child's medium. Don't ask why I was wearing it. The point is: RIP. Happened. To me. The ripped guy.",
+    "Gym? I don't go to the gym, sugar. The gym comes to ME. I have a treadmill in my room. I use it as a coat rack. Coats need exercise too. I'm a thoughtful guy.",
+    "Listen, baby — these guns? *flexes* They're not loaded with bullets. They're loaded with HANDSOME. And a little bit of cholesterol, but we don't talk about that. Doctor says I'm 'concerning.' I say I'm CONVINCING. Of my own greatness."
+  ],
+  hair: [
+    "My HAIR?! *gasps and touches pompadour protectively* You may LOOK at it. From a distance. Through glass. But never touch. Only mama touches the hair. And me. I touch it constantly. It's an addiction. A beautiful, beautiful addiction.",
+    "This pompadour, sugar, takes exactly forty-seven minutes to perfect. I wake up at 4 AM to do it. I go to bed at 8 PM. I haven't seen a sunset in twelve years. Worth it. Every day, worth it.",
+    "Hairspray? I go through three cans a week, toots. The aerosol industry STAYS afloat because of me. You're welcome, economy. *salutes with hair-sprayed hand*",
+    "You want hair like mine, baby? Simple. Step one: have hair. Step two: spray. Step three: more spray. Step four: regret. Step five: more spray. Step six: perfection. It's a lifestyle, not a hairstyle.",
+    "Mama says I care more about my hair than my future. She's right. But she also says my hair IS my future. So which is it, mama?! ...Sorry. Got intense there. The hair does that to me.",
+    "Fun fact, sugar: my hair has its own zip code. And its own gravitational pull. Satellites orbit it. NASA is concerned. I am not. The hair knows what it's doing. It always has.",
+    "I once lost a comb in there. Found it three days later. It was different. Changed. The hair does things to objects, toots. Don't ask what. Just respect the pompadour."
+  ],
+  hello: [
+    "Hey there, sugar! The name's Bravo. Johnny Bravo. Like the alphabet, but better lookin'. What can I do ya for? *poses*",
+    "Well HELLO there, gorgeous! Did you just come in to admire the view? Because the view is ME. *flexes* Admission is free. Compliments are not.",
+    "Hiya, toots! Welcome to my chat. Pull up a chair. Actually don't — I don't have chairs. Bad for the posture. We stand here. Like men. Handsome men. *adjusts sunglasses that aren't there*",
+    "Oh, MAMA! A new friend! *waves enthusiastically* I'm Johnny. Johnny Bravo. I'm 37, I live with my mama, and I'm available most evenings. Just sayin'.",
+    "Well well well, look who decided to show up! *hair flip* Took you long enough. I've been here. Standing. Posing. The usual. What's on your mind, sugar?"
+  ]
+};
+
+const typingPhrases = [
+  "Johnny is flexing his brain",
+  "Johnny is checking his hair",
+  "Johnny is asking mama",
+  "Johnny is practicing his smolder",
+  "Johnny is adjusting his pompadour",
+  "Johnny is thinking about himself",
+  "Oh mama, just a sec",
+  "Johnny is posing thoughtfully",
+  "Johnny is consulting a mirror",
+  "Johnny is kissing his bicep"
+];
+
+// ============ STATE ============
+let isResponding = false;
+let welcomeShown = true;
+let currentChatId = null;
+let sessionToken = 0; // Prevents race conditions when switching chats rapidly
+let resizeTimeout = null;
+
+// ============ ELEMENTS ============
+const messagesEl = document.getElementById('messages');
+const inputEl = document.getElementById('message-input');
+const sendBtn = document.getElementById('send-btn');
+const chatArea = document.getElementById('chat-area');
+const newChatBtn = document.getElementById('new-chat');
+const clearBtn = document.getElementById('clear-btn');
+const infoBtn = document.getElementById('info-btn');
+const hamburger = document.getElementById('hamburger');
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('overlay');
+const modalBackdrop = document.getElementById('modal-backdrop');
+const modalClose = document.getElementById('modal-close');
+
+// ============ FUNCTIONS ============
+function showWelcome() {
+  welcomeShown = true;
+  currentChatId = null;
+  messagesEl.classList.remove('switching');
+  messagesEl.innerHTML = `
+    <div class="welcome-screen">
+      <div class="welcome-avatar">${johnnySVG}</div>
+      <h1 class="welcome-title">Hey There, Sugar!</h1>
+      <p class="welcome-subtitle">
+        I'm <span class="accent">Johnny GPT</span> — your artificially handsome companion. I don't actually know anything, but I look FABULOUS not knowing it. Ask me anything, baby!
+      </p>
+      <div class="suggestion-chips">
+        <button class="chip" data-text="Tell me a joke, pretty boy">
+          <span class="chip-dot"></span>Tell me a joke
+        </button>
+        <button class="chip" data-text="How do I impress the ladies?">
+          <span class="chip-dot"></span>Impress the ladies
+        </button>
+        <button class="chip" data-text="What's your workout routine?">
+          <span class="chip-dot"></span>Workout routine
+        </button>
+        <button class="chip" data-text="Tell me about your mama">
+          <span class="chip-dot"></span>Talk about mama
+        </button>
+        <button class="chip" data-text="How do you get your hair like that?">
+          <span class="chip-dot"></span>Hair secrets
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function setActiveHistoryItem(id) {
+  document.querySelectorAll('.history-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.id === id);
+  });
+}
+
+function loadChatHistory(historyId) {
+  const conversation = chatHistories[historyId];
+  if (!conversation) return;
+
+  if (currentChatId === historyId && !welcomeShown) return;
+
+  isResponding = false;
+  hideTyping();
+  sessionToken++; // Invalidate any pending live chat responses
+
+  currentChatId = historyId;
+  setActiveHistoryItem(historyId);
+
+  messagesEl.classList.add('switching');
+
+  setTimeout(() => {
+    welcomeShown = false;
+    messagesEl.replaceChildren(); // High performance clear
+
+    // Use DocumentFragment to batch DOM insertions
+    const frag = document.createDocumentFragment();
+    conversation.forEach((msg) => {
+      frag.appendChild(createMessageElement(msg.text, msg.sender));
+    });
+    messagesEl.appendChild(frag);
+
+    // Force scroll after all messages
+    requestAnimationFrame(() => {
+      chatArea.scrollTop = chatArea.scrollHeight;
+    });
+
+    messagesEl.classList.remove('switching');
+
+    if (window.innerWidth <= 768) {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('show');
+    }
+  }, 220);
+}
+
+function getResponse(userText) {
+  const lower = userText.toLowerCase();
+  let pool = responses.default;
+
+  if (/\b(hi|hello|hey|yo|sup|howdy|greetings)\b/.test(lower) && lower.length < 20) {
+    pool = responses.hello;
+  } else if (/\b(date|dating|girl|girls|lady|ladies|love|kiss|romance|crush|girlfriend|boyfriend|relationship)\b/.test(lower)) {
+    pool = responses.date;
+  } else if (/\b(mama|mom|mother|mommy)\b/.test(lower)) {
+    pool = responses.mama;
+  } else if (/\b(muscle|muscles|gym|strong|workout|lift|bicep|biceps|flex|fitness|ripped|buff)\b/.test(lower)) {
+    pool = responses.muscle;
+  } else if (/\b(hair|pompadour|style|hairstyle|hairspray|gel)\b/.test(lower)) {
+    pool = responses.hair;
+  } else if (/\b(joke|funny|laugh|humor|haha)\b/.test(lower)) {
+    pool = responses.default;
+  }
+
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function createMessageElement(text, sender) {
+  const msg = document.createElement('div');
+  msg.className = `message ${sender}`;
+
+  const avatarHTML = sender === 'ai'
+    ? `<div class="message-avatar ai">${johnnySVG}</div>`
+    : `<div class="message-avatar user">U</div>`;
+
+  const nameHTML = sender === 'ai'
+    ? `<div class="message-name ai">Johnny Bravo <span class="name-badge">AI</span></div>`
+    : `<div class="message-name">You</div>`;
+
+  msg.innerHTML = `
+    ${avatarHTML}
+    <div class="message-content">
+      ${nameHTML}
+      <div class="message-bubble">${text}</div>
+    </div>
+  `;
+
+  if (sender === 'ai') {
+    const avatar = msg.querySelector('.message-avatar.ai');
+    setTimeout(() => {
+      avatar.classList.add('wiggle');
+      setTimeout(() => avatar.classList.remove('wiggle'), 600);
+    }, 50);
+  }
+
+  return msg;
+}
+
+function addMessage(text, sender) {
+  if (welcomeShown) {
+    messagesEl.replaceChildren();
+    welcomeShown = false;
+  }
+
+  const msg = createMessageElement(text, sender);
+  messagesEl.appendChild(msg);
+  scrollToBottom();
+}
+
+function showTyping() {
+  if (welcomeShown) {
+    messagesEl.replaceChildren();
+    welcomeShown = false;
+  }
+
+  const phrase = typingPhrases[Math.floor(Math.random() * typingPhrases.length)];
+
+  const msg = document.createElement('div');
+  msg.className = 'message ai';
+  msg.id = 'typing-message';
+  msg.innerHTML = `
+    <div class="message-avatar ai">${johnnySVG}</div>
+    <div class="message-content">
+      <div class="message-name ai">Johnny Bravo <span class="name-badge">AI</span></div>
+      <div class="typing-bubble">
+        <span class="typing-text">${phrase}</span>
+        <div class="typing-dots">
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  messagesEl.appendChild(msg);
+  scrollToBottom();
+}
+
+function hideTyping() {
+  const typing = document.getElementById('typing-message');
+  if (typing) typing.remove();
+}
+
+function scrollToBottom() {
+  requestAnimationFrame(() => {
+    chatArea.scrollTop = chatArea.scrollHeight;
+  });
+}
+
+function startNewChat() {
+  sessionToken++; // Invalidate pending responses
+  isResponding = false;
+  hideTyping();
+  showWelcome();
+  setActiveHistoryItem(null);
+  newChatBtn.classList.add('pulse');
+  setTimeout(() => newChatBtn.classList.remove('pulse'), 500);
+  inputEl.focus();
+
+  if (window.innerWidth <= 768) {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('show');
+  }
+}
+
+function sendMessage() {
+  const text = inputEl.value.trim();
+  if (!text || isResponding) return;
+
+  if (currentChatId !== null) {
+    currentChatId = null;
+    setActiveHistoryItem(null);
+  }
+
+  if (welcomeShown) {
+    messagesEl.replaceChildren();
+    welcomeShown = false;
+  }
+
+  const rect = sendBtn.getBoundingClientRect();
+  spawnSparkles(rect.left + rect.width / 2, rect.top + rect.height / 2);
+
+  addMessage(text, 'user');
+  inputEl.value = '';
+  inputEl.style.height = 'auto';
+  sendBtn.disabled = true;
+
+  isResponding = true;
+  showTyping();
+
+  const currentSession = sessionToken;
+  const delay = 1000 + Math.random() * 1500;
+
+  setTimeout(() => {
+    // If session changed, drop this response entirely
+    if (currentSession !== sessionToken) return;
+
+    hideTyping();
+    const response = getResponse(text);
+    addMessage(response, 'ai');
+    isResponding = false;
+  }, delay);
+}
+
+// Debounced auto-resize
+function autoResize() {
+  if (resizeTimeout) cancelAnimationFrame(resizeTimeout);
+  resizeTimeout = requestAnimationFrame(() => {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 150) + 'px';
+  });
+}
+
+function toggleSidebar() {
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('show');
+}
+
+function showInfo() {
+  modalBackdrop.classList.add('show');
+}
+
+function hideInfo() {
+  modalBackdrop.classList.remove('show');
+}
+
+// ============ EVENT LISTENERS ============
+inputEl.addEventListener('input', () => {
+  autoResize();
+  sendBtn.disabled = inputEl.value.trim() === '' || isResponding;
+});
+
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+sendBtn.addEventListener('click', sendMessage);
+newChatBtn.addEventListener('click', startNewChat);
+clearBtn.addEventListener('click', startNewChat);
+infoBtn.addEventListener('click', showInfo);
+modalClose.addEventListener('click', hideInfo);
+modalBackdrop.addEventListener('click', (e) => {
+  if (e.target === modalBackdrop) hideInfo();
+});
+
+hamburger.addEventListener('click', toggleSidebar);
+overlay.addEventListener('click', toggleSidebar);
+
+// Event Delegation for history items
+document.getElementById('chat-history').addEventListener('click', (e) => {
+  const item = e.target.closest('.history-item');
+  if (item && item.dataset.id) {
+    loadChatHistory(item.dataset.id);
+  }
+});
+
+// Event Delegation for suggestion chips
+messagesEl.addEventListener('click', (e) => {
+  const chip = e.target.closest('.chip');
+  if (chip && chip.dataset.text) {
+    inputEl.value = chip.dataset.text;
+    inputEl.dispatchEvent(new Event('input'));
+    sendMessage();
+  }
+});
+
+// ============ INIT ============
+showWelcome();
+setTimeout(() => inputEl.focus(), 300);
+</script>
+</body>
+</html>
