@@ -33,8 +33,9 @@ src/
   domain/           Pure, DOM-free logic
     responses.js      Response engine: keyword pools, typing phrases, getResponse routing
     engine.js         Conversation engine: session-token race guard, response scheduling, chat switching, event subscriptions (DOM-free)
+    engine.test.js    Vitest unit tests for the conversation engine (race guards, scheduling, events)
     histories.js      Pre-baked chat histories keyed by sidebar data-id
-    responses.test.js Vitest unit tests for the response engine, histories, avatar, and the conversation engine
+    responses.test.js Vitest unit tests for the response engine, histories, and avatar
   assets/
     styles.css       All application styles (theme variables, retro borders, responsive rules)
     avatar.js        Canonical Johnny Bravo SVG string

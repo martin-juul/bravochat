@@ -10,6 +10,7 @@ import {
   getIsResponding,
   getCurrentChatId,
   getLastUserText,
+  hasHistory,
 } from '../domain/engine.js';
 import { spawnSparkles } from './background.js';
 import { messagesEl, inputEl, sendBtn, newChatBtn, closeMobileSidebar } from './dom.js';
@@ -74,7 +75,7 @@ export function startNewChat() {
  * @param {string} historyId key into `chatHistories` (matches sidebar data-id)
  */
 export function loadChatHistory(historyId) {
-  if (getCurrentChatId() === historyId) return;
+  if (getCurrentChatId() === historyId || !hasHistory(historyId)) return;
   messagesEl.classList.add('switching');
   engineLoadHistory(historyId);
 }
@@ -95,7 +96,7 @@ export function handleChipClick(e) {
 /** Wire engine events to rendering and focus the composer. Called once from initApp. */
 export function initChatFlow() {
   subscribe(handleEngineEvent);
-  inputEl.focus();
+  setTimeout(() => inputEl.focus(), 300);
 }
 
 /**
@@ -126,11 +127,19 @@ function handleEngineEvent(event) {
       closeMobileSidebar();
       break;
 
-    case 'history-loaded':
-      renderConversation(/** @type {import('../domain/histories.js').HistoryMessage[]} */ (event.conversation));
-      messagesEl.classList.remove('switching');
-      setActiveHistoryItem(/** @type {string} */ (event.historyId));
-      closeMobileSidebar();
+    case 'history-loaded': {
+      // Sidebar highlight updates immediately; the visual switch fade plays out
+      // over 220ms (KTD4: the UI owns the presentation delay). The staleness
+      // guard keeps a New Chat clicked during the window from being stomped.
+      const id = /** @type {string} */ (event.historyId);
+      setActiveHistoryItem(id);
+      setTimeout(() => {
+        if (getCurrentChatId() !== id) return;
+        renderConversation(/** @type {import('../domain/histories.js').HistoryMessage[]} */ (event.conversation));
+        messagesEl.classList.remove('switching');
+        closeMobileSidebar();
+      }, 220);
       break;
+    }
   }
 }

@@ -1,19 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { responses } from './responses.js';
-import {
-  send,
-  regenerate,
-  startNewChat,
-  loadHistory,
-  subscribe,
-  getIsResponding,
-  getCurrentChatId,
-  _resetForTests,
-} from './engine.js';
 
 // Recapture a fresh module per test so singleton state never leaks (KTD5 +
-// module-singleton engine; vi.resetModules with dynamic imports, mirroring
-// the pattern the old state block in responses.test.js used).
+// module-singleton engine; vi.resetModules with dynamic imports).
 async function freshEngine() {
   vi.resetModules();
   return import('./engine.js');
@@ -26,7 +15,6 @@ function collector() {
 
 beforeEach(() => {
   vi.useFakeTimers();
-  _resetForTests();
 });
 
 describe('send', () => {
@@ -205,6 +193,14 @@ describe('loadHistory', () => {
     events.length = 0;
     engine.loadHistory('hairgel');
     expect(events).toEqual([]);
+  });
+
+  it('clears currentChatId when sending from a loaded history (live-chat transition)', async () => {
+    const engine = await freshEngine();
+    engine.loadHistory('hairgel');
+    expect(engine.getCurrentChatId()).toBe('hairgel');
+    engine.send('hello');
+    expect(engine.getCurrentChatId()).toBeNull();
   });
 
   it('reloads a history after startNewChat cleared the id (old welcomeShown path)', async () => {

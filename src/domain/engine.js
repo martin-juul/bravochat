@@ -98,7 +98,7 @@ export function send(text) {
   isResponding = true;
   emit({ type: 'typing-started' });
 
-  scheduleResponse(text, 1000, 2500);
+  scheduleResponse(trimmed, 1000, 2500);
 }
 
 /**
@@ -151,12 +151,6 @@ export function loadHistory(historyId) {
   emit({ type: 'history-loaded', conversation, historyId });
 }
 
-// ============ TEST SEAM ============
+/** @returns {boolean} whether `historyId` names a pre-baked conversation */
+export const hasHistory = (historyId) => Boolean(chatHistories[historyId]);
 
-/** Reset all engine state to its initial values. Test-only. */
-export function _resetForTests() {
-  sessionToken = 0;
-  isResponding = false;
-  currentChatId = null;
-  lastUserText = '';
-}
