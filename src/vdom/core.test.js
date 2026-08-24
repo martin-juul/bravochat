@@ -63,11 +63,13 @@ describe('diffChildren (keyed)', () => {
     expect(ops.filter((o) => o.op === 'remove')).toHaveLength(0);
   });
 
-  it('reverse keyed list: all updates, zero inserts/removes', () => {
+  it('reverse keyed list: only moves, zero inserts/removes', () => {
     const oldC = [h('li', { key: 'a' }), h('li', { key: 'b' }), h('li', { key: 'c' })];
     const ops = diffChildren(oldC, [...oldC].reverse());
-    expect(ops.filter((o) => o.op === 'update')).toHaveLength(3);
-    expect(ops.filter((o) => o.op !== 'update')).toHaveLength(0);
+    expect(ops.filter((o) => o.op === 'move')).toHaveLength(2); // c and b move; a stays put
+    expect(ops.filter((o) => o.op === 'update')).toHaveLength(1); // a patches in place
+    expect(ops.filter((o) => o.op === 'insert')).toHaveLength(0);
+    expect(ops.filter((o) => o.op === 'remove')).toHaveLength(0);
   });
 
   it('unkeyed text children patch by position', () => {

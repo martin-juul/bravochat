@@ -76,6 +76,9 @@ let rendered = [];
 export function showWelcome() {
   welcomeShown = true;
   typingNode = null;
+  messages = [];
+  idCounter = 0;
+  messagesEl.classList.remove('switching');
   paint(derive());
 }
 
@@ -186,7 +189,7 @@ export function showTyping() {
   hideTyping(); // never stack indicators
   typingIndex = (typingIndex + 1) % typingPhrases.length; // progress phrases between sessions
 
-  typingNode = h('div', { class: 'message ai', key: 'typing' }, [
+  typingNode = h('div', { class: 'message ai', key: 'typing', id: 'typing-message' }, [
     h('div', { class: 'message-avatar ai', innerHTML: johnnySVG }),
     h('div', { class: 'message-content' }, [
       h('div', { class: 'message-name ai' }, ['Johnny Bravo ', h('span', { class: 'name-badge' }, ['AI'])]),
@@ -231,5 +234,6 @@ export function renderConversation(conversation) {
   idCounter = 0;
   messages = conversation.map((msg, i) => ({ id: `h${i}`, text: msg.text, sender: msg.sender }));
   paint(derive());
+  wiggleNewestAi();
   scrollChat();
 }

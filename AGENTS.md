@@ -77,7 +77,7 @@ The sidebar contains "Recent Chats." Clicking these loads hardcoded conversation
 When modifying or adding features, adhere to these performance rules:
 1. **No Layout Thrashing:** Batch DOM read/writes. Use `requestAnimationFrame` for visual updates (e.g., scrolling to bottom).
 2. **Efficient DOM Clearing:** Use `messagesEl.replaceChildren()` instead of `innerHTML = ''` to clear chat containers. It is significantly faster and triggers less garbage collection.
-3. **Document Fragments:** When injecting multiple message nodes (like loading a chat history), build them in a `DocumentFragment` and append the fragment to the DOM in a single operation.
+3. **Document Fragments:** When injecting multiple message nodes outside the vdom path, build them in a `DocumentFragment` and append the fragment to the DOM in a single operation. For message-list rendering, keyed-patch rendering through `src/vdom/dom.js` supersedes manual fragment batching.
 4. **Event Delegation:** Do not attach event listeners to individual chat items or suggestion chips. Use event delegation on the parent container (e.g., listening on `chat-history` and using `e.target.closest('.history-item')`).
 5. **Canvas over DOM:** For any new animated, non-interactive background elements, add them to the `animateBg` Canvas loop in `background.js`. Do not create absolutely-positioned DOM nodes for background effects.
 

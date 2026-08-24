@@ -102,6 +102,18 @@ export function diffChildren(oldChildren, newChildren) {
   for (let i = 0; i < oldChildren.length; i++) {
     if (!usedOld.has(i)) ops.push({ op: 'remove', index: i, from: i, key: oldChildren[i].key ?? null });
   }
+  // Move detection: a matched old index that breaks ascending order must be
+  // repositioned — convert its update op to a move (executed via insertBefore).
+  let maxSeen = -1;
+  for (let i = 0; i < newChildren.length; i++) {
+    const m = match[i];
+    if (m == null) continue;
+    if (m < maxSeen) {
+      ops.find((o) => o.op === 'update' && o.index === i).op = 'move';
+    } else {
+      maxSeen = m;
+    }
+  }
   return ops;
 }
 

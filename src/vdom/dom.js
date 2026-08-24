@@ -111,14 +111,17 @@ export function patchChildren(parent, oldChildren, newChildren) {
   for (const op of ops) {
     if (op.op === 'remove') liveOld[op.from]?.remove();
   }
-  // Pass 2: patch matched pairs and compute a reuse map new-index -> live node.
+  // Pass 2: patch matched pairs (updates and moves) and compute a reuse map
+  // new-index -> live node.
   const liveFor = new Array(newChildren.length).fill(null);
   for (const op of ops) {
-    if (op.op === 'update') liveFor[op.index] = patchEl(liveOld[op.from], oldChildren[op.from], newChildren[op.index]);
+    if (op.op === 'update' || op.op === 'move') {
+      liveFor[op.index] = patchEl(liveOld[op.from], oldChildren[op.from], newChildren[op.index]);
+    }
   }
-  // Pass 3: inserts, positioned by anchoring to whatever follows live.
+  // Pass 3: inserts and repositioning moves, anchored to whatever follows live.
   for (const op of ops) {
-    if (op.op !== 'insert') continue;
+    if (op.op !== 'insert' && op.op !== 'move') continue;
     const node = createEl(newChildren[op.index]);
     let anchor = null;
     for (let i = op.index + 1; i < liveFor.length; i++) {
@@ -144,18 +147,3 @@ export function ownContainer(container) {
   }
 }
 
-/**
- * Mount/patch a vnode into a container. The classic stateful render loop:
- * first call mounts, later calls patch.
- * @param {HTMLElement} container
- * @param {{ current: import('./core.js').VNode | null }} state a mutable box holding the last vnode
- * @param {import('./core.js').VNode} vnode
- */
-export function render(container, state, vnode) {
-  if (state.current == null) {
-    container.replaceChildren(createEl(vnode));
-  } else {
-    patchEl(container.firstChild, state.current, vnode);
-  }
-  state.current = vnode;
-}
