@@ -9,6 +9,7 @@ export function initBackground() {
   resizeBgCanvas();
   requestAnimationFrame(animateBg);
 }
+
 const bgCtx = bgCanvas.getContext('2d');
 let W, H;
 
@@ -25,11 +26,19 @@ function resizeBgCanvas() {
 }
 
 const bgShapes = [
-  { x: 0.08, y: 0.12, type: 'star5', color: 'rgba(255, 61, 127, 0.4)', size: 40, phase: 0 },
-  { x: 0.15, y: 0.70, type: 'ring_dot', color1: 'rgba(46, 196, 182, 0.4)', color2: 'rgba(255, 217, 61, 0.5)', size: 50, phase: -3 },
-  { x: 0.90, y: 0.25, type: 'star4', color: 'rgba(255, 217, 61, 0.5)', size: 35, phase: -6 },
-  { x: 0.92, y: 0.85, type: 'circle', color: 'rgba(255, 61, 127, 0.4)', size: 45, phase: -9 },
-  { x: 0.05, y: 0.45, type: 'star4', color: 'rgba(46, 196, 182, 0.4)', size: 30, phase: -12 }
+  {x: 0.08, y: 0.12, type: 'star5', color: 'rgba(255, 61, 127, 0.4)', size: 40, phase: 0},
+  {
+    x: 0.15,
+    y: 0.70,
+    type: 'ring_dot',
+    color1: 'rgba(46, 196, 182, 0.4)',
+    color2: 'rgba(255, 217, 61, 0.5)',
+    size: 50,
+    phase: -3,
+  },
+  {x: 0.90, y: 0.25, type: 'star4', color: 'rgba(255, 217, 61, 0.5)', size: 35, phase: -6},
+  {x: 0.92, y: 0.85, type: 'circle', color: 'rgba(255, 61, 127, 0.4)', size: 45, phase: -9},
+  {x: 0.05, y: 0.45, type: 'star4', color: 'rgba(46, 196, 182, 0.4)', size: 30, phase: -12},
 ];
 
 const sparkles = [];
@@ -67,7 +76,7 @@ export function spawnSparkles(x, y) {
       color: colors[i % colors.length],
       rotation: Math.random() * Math.PI * 2,
       rotSpeed: (Math.random() - 0.5) * 0.2,
-      size: 6 + Math.random() * 3
+      size: 6 + Math.random() * 3,
     });
   }
 }
@@ -128,27 +137,27 @@ function animateBg(now) {
 
     if (s.type === 'star5') {
       bgCtx.fillStyle = s.color;
-      drawStar(bgCtx, 0, 0, 5, s.size/2, s.size/4);
+      drawStar(bgCtx, 0, 0, 5, s.size / 2, s.size / 4);
       bgCtx.fill();
     } else if (s.type === 'star4') {
       bgCtx.fillStyle = s.color;
-      drawStar(bgCtx, 0, 0, 4, s.size/2, s.size/4);
+      drawStar(bgCtx, 0, 0, 4, s.size / 2, s.size / 4);
       bgCtx.fill();
     } else if (s.type === 'ring_dot') {
       bgCtx.strokeStyle = s.color1;
       bgCtx.lineWidth = 3;
       bgCtx.beginPath();
-      bgCtx.arc(0, 0, s.size/2, 0, Math.PI * 2);
+      bgCtx.arc(0, 0, s.size / 2, 0, Math.PI * 2);
       bgCtx.stroke();
       bgCtx.fillStyle = s.color2;
       bgCtx.beginPath();
-      bgCtx.arc(0, 0, s.size/4, 0, Math.PI * 2);
+      bgCtx.arc(0, 0, s.size / 4, 0, Math.PI * 2);
       bgCtx.fill();
     } else if (s.type === 'circle') {
       bgCtx.strokeStyle = s.color;
       bgCtx.lineWidth = 2.5;
       bgCtx.beginPath();
-      bgCtx.arc(0, 0, s.size/2, 0, Math.PI * 2);
+      bgCtx.arc(0, 0, s.size / 2, 0, Math.PI * 2);
       bgCtx.stroke();
     }
     bgCtx.restore();

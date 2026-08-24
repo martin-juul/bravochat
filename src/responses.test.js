@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { getResponse, responses, typingPhrases } from './responses.js';
 import { chatHistories } from './histories.js';
@@ -31,7 +31,7 @@ describe('getResponse routing', () => {
   });
 
   it('routes workout keywords to the muscle pool', () => {
-    expect(responses.muscle).toContain(getResponse("what's your workout routine?"));
+    expect(responses.muscle).toContain(getResponse('what\'s your workout routine?'));
   });
 
   it('routes hair keywords to the hair pool', () => {

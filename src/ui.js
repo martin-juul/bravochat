@@ -5,10 +5,14 @@ import { chatHistories } from './histories.js';
 import { johnnySVG } from './avatar.js';
 import { spawnSparkles } from './background.js';
 import {
-  getIsResponding, setIsResponding,
-  getWelcomeShown, setWelcomeShown,
-  getCurrentChatId, setCurrentChatId,
-  currentSessionToken, incrementSessionToken,
+  currentSessionToken,
+  getCurrentChatId,
+  getIsResponding,
+  getWelcomeShown,
+  incrementSessionToken,
+  setCurrentChatId,
+  setIsResponding,
+  setWelcomeShown,
 } from './state.js';
 
 let resizeTimeout = null;
@@ -268,49 +272,49 @@ function hideInfo() {
 
 export function initApp() {
 // ============ EVENT LISTENERS ============
-inputEl.addEventListener('input', () => {
-  autoResize();
-  sendBtn.disabled = inputEl.value.trim() === '' || getIsResponding();
-});
+  inputEl.addEventListener('input', () => {
+    autoResize();
+    sendBtn.disabled = inputEl.value.trim() === '' || getIsResponding();
+  });
 
-inputEl.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
-});
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
 
-sendBtn.addEventListener('click', sendMessage);
-newChatBtn.addEventListener('click', startNewChat);
-clearBtn.addEventListener('click', startNewChat);
-infoBtn.addEventListener('click', showInfo);
-modalClose.addEventListener('click', hideInfo);
-modalBackdrop.addEventListener('click', (e) => {
-  if (e.target === modalBackdrop) hideInfo();
-});
+  sendBtn.addEventListener('click', sendMessage);
+  newChatBtn.addEventListener('click', startNewChat);
+  clearBtn.addEventListener('click', startNewChat);
+  infoBtn.addEventListener('click', showInfo);
+  modalClose.addEventListener('click', hideInfo);
+  modalBackdrop.addEventListener('click', (e) => {
+    if (e.target === modalBackdrop) hideInfo();
+  });
 
-hamburger.addEventListener('click', toggleSidebar);
-overlay.addEventListener('click', toggleSidebar);
+  hamburger.addEventListener('click', toggleSidebar);
+  overlay.addEventListener('click', toggleSidebar);
 
 // Event Delegation for history items
-document.getElementById('chat-history').addEventListener('click', (e) => {
-  const item = e.target.closest('.history-item');
-  if (item && item.dataset.id) {
-    loadChatHistory(item.dataset.id);
-  }
-});
+  document.getElementById('chat-history').addEventListener('click', (e) => {
+    const item = e.target.closest('.history-item');
+    if (item && item.dataset.id) {
+      loadChatHistory(item.dataset.id);
+    }
+  });
 
 // Event Delegation for suggestion chips
-messagesEl.addEventListener('click', (e) => {
-  const chip = e.target.closest('.chip');
-  if (chip && chip.dataset.text) {
-    inputEl.value = chip.dataset.text;
-    inputEl.dispatchEvent(new Event('input'));
-    sendMessage();
-  }
-});
+  messagesEl.addEventListener('click', (e) => {
+    const chip = e.target.closest('.chip');
+    if (chip && chip.dataset.text) {
+      inputEl.value = chip.dataset.text;
+      inputEl.dispatchEvent(new Event('input'));
+      sendMessage();
+    }
+  });
 
 // ============ INIT ============
-showWelcome();
-setTimeout(() => inputEl.focus(), 300);
+  showWelcome();
+  setTimeout(() => inputEl.focus(), 300);
 }

@@ -8,13 +8,21 @@ let currentChatId = null;
 let sessionToken = 0;
 
 export const getIsResponding = () => isResponding;
-export const setIsResponding = (v) => { isResponding = v; };
+export const setIsResponding = (v) => {
+  isResponding = v;
+};
 
 export const getWelcomeShown = () => welcomeShown;
-export const setWelcomeShown = (v) => { welcomeShown = v; };
+export const setWelcomeShown = (v) => {
+  welcomeShown = v;
+};
 
 export const getCurrentChatId = () => currentChatId;
-export const setCurrentChatId = (id) => { currentChatId = id; };
+export const setCurrentChatId = (id) => {
+  currentChatId = id;
+};
 
 export const currentSessionToken = () => sessionToken;
-export const incrementSessionToken = () => { sessionToken++; };
+export const incrementSessionToken = () => {
+  sessionToken++;
+};
