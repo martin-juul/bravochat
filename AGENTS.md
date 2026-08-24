@@ -88,6 +88,7 @@ The Johnny Bravo avatar is an exported SVG string (`johnnySVG`) drawn on a `100x
 - If modifying the avatar, ensure the paths scale correctly at the welcome-screen size (120x144px) and message-avatar size (40x48px).
 
 ## Tone & Content Rules
+- **Voice:** see `docs/johnny-personality.md` — the canonical Johnny Bravo voice profile for writing new jokes, responses, and in-character copy. Key dynamic: Johnny is on top, the developer/user is the straight man ("he makes the code work, but I get all the action").
 - Johnny is arrogant, obsessed with his hair/mama/muscles, and constantly fails at dating.
 - Use his characteristic vocabulary: "sugar", "toots", "mama", "baby", "handsome".
 - Responses should be funny, slightly pathetic, but never genuinely offensive or inappropriate.
