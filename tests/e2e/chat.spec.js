@@ -93,7 +93,7 @@ test('new chat resets to the welcome screen', async ({ page }) => {
   await page.locator('#message-input').fill('tell me a joke');
   await page.locator('#message-input').press('Enter');
   await expect(page.locator('.message.user')).toHaveCount(1);
-  await expect(page.locator('.message')).toHaveCount(1);
+  await expect(page.locator('.message')).toHaveCount(1, { timeout: 300 }); // AI bubble not yet — response pending
 });
 
 test('history items load pre-baked conversations', async ({ page }) => {
@@ -162,4 +162,53 @@ test('credit line links to juul.xyz', async ({ page }) => {
   const link = page.locator('.input-credit a').first();
   await expect(link).toHaveAttribute('href', 'https://juul.xyz');
   await expect(page.locator('.input-credit')).toContainText(/Martin Juul Christiansen/i);
+});
+
+test('persisted chats: threshold, reload, resume without duplication', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => localStorage.clear());
+
+  // Two messages (below the 3-message threshold): nothing saved (AE1).
+  const input = page.locator('#message-input');
+  await input.fill('hello there sugar');
+  await input.press('Enter');
+  await expect(page.locator('.message.ai .message-bubble').last()).toBeVisible({ timeout: 10_000 });
+  await page.reload();
+  await expect(page.locator('#saved-chats .history-item')).toHaveCount(0);
+
+  // Cross the threshold with a hair topic (AE2).
+  for (const q of ['tell me about your hair', 'what about hairspray though']) {
+    await input.fill(q);
+    await input.press('Enter');
+    await expect(page.locator('.message.ai .message-bubble').last()).toBeVisible({ timeout: 10_000 });
+  }
+  await expect(page.locator('#saved-chats .history-item')).toHaveCount(1);
+  await expect(page.locator('#saved-chats .history-item-text')).toHaveText('Hair care tips');
+  await expect(page.locator('#saved-chats .history-item')).toHaveAttribute('title', /spray|handsome|Johnny/);
+
+  // Reload: the chat survives and resumes as continuable (AE3).
+  await page.reload();
+  await expect(page.locator('#saved-chats .history-item')).toHaveCount(1);
+  await page.locator('#saved-chats .history-item').click();
+  await expect(page.locator('.message')).toHaveCount(4); // the persisted conversation (the sub-threshold pair was never stored)
+  await input.fill('continue this hair chat');
+  await input.press('Enter');
+  await expect(page.locator('.message')).toHaveCount(6);
+  await expect(page.locator('#saved-chats .history-item')).toHaveCount(1); // no duplicate entry
+});
+
+test('new chat leaves the persisted chat stored', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => localStorage.clear());
+  const input = page.locator('#message-input');
+  for (const q of ['hey mama', 'tell me about mama', 'mama stories']) {
+    await input.fill(q);
+    await input.press('Enter');
+    await expect(page.locator('.message.ai .message-bubble').last()).toBeVisible({ timeout: 10_000 });
+  }
+  await expect(page.locator('#saved-chats .history-item')).toHaveCount(1);
+
+  await page.locator('#new-chat').click();
+  await expect(page.getByRole('heading', { name: 'Hey There, Sugar!' })).toBeVisible();
+  await expect(page.locator('#saved-chats .history-item')).toHaveCount(1); // still stored (R10)
 });

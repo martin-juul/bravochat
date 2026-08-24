@@ -31,15 +31,19 @@ src/
   ui/               Presentation layer (owns all chat-surface DOM access)
     dom.js            Shared element lookups + DOM helpers (scrollToBottom, autoResize, closeMobileSidebar)
     messages.js       Rendering via the vdom: a message-list data model derives vnodes; keyed patches mutate the DOM (welcome screen, bubbles, typing indicator)
-    chat-flow.js      Orchestration wiring: UI commands into the engine, engine events into rendering (initChatFlow)
+    chat-flow.js      Orchestration wiring: UI commands into the engine, engine events into rendering, persistence recording (initChatFlow)
+    sidebar-chats.js  vdom-rendered "Your Chats, Sugar" section for persisted chats (keyed, below the fakes)
     chrome.js         Sidebar/overlay/modal wiring + all event listeners (exports initApp)
     background.js     Canvas engine: atomic pattern, floating shapes, sparkle particles (exports initBackground, spawnSparkles)
   domain/           Pure, DOM-free logic
     responses.js      Response engine: keyword pools, typing phrases, getResponse routing
     engine.js         Conversation engine: session-token race guard, response scheduling, chat switching, event subscriptions (DOM-free)
     engine.test.js    Vitest unit tests for the conversation engine (race guards, scheduling, events)
+    chat-store.js     Persisted-chat store: 3-message threshold, 10-chat cap with oldest-first eviction, injectable storage seam (DOM-free)
+    titles.js         Deterministic rule-based chat titles: dominant-category label + Johnny garnish (DOM-free)
     histories.js      Pre-baked chat histories keyed by sidebar data-id
     responses.test.js Vitest unit tests for the response engine, histories, and avatar
+    chat-store.test.js Vitest unit tests for the persistence store (threshold, titles, eviction, round-trip)
   assets/
     styles.css       All application styles (theme variables, retro borders, responsive rules)
     avatar.js        Canonical Johnny Bravo SVG string
