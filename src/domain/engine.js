@@ -5,7 +5,7 @@
  * to engine events and performs all rendering in reaction to them.
  */
 
-import { composeResponse, resetConversation } from './responses.js';
+import { composeResponse, resetConversation, restoreConversationState, exportConversationState } from './responses.js';
 import { chatHistories } from './histories.js';
 
 // ============ MODULE STATE ============
@@ -18,6 +18,9 @@ let isResponding = false;
 let currentChatId = null;
 /** @type {string} text of the most recent user message, for regeneration */
 let lastUserText = '';
+
+/** @type {boolean} whether the active chat is a resumable persisted chat */
+let resumed = false;
 
 // ============ SUBSCRIPTIONS (KTD1) ============
 
@@ -92,7 +95,7 @@ export function send(text) {
   const trimmed = typeof text === 'string' ? text.trim() : '';
   if (!trimmed || isResponding) return;
 
-  if (currentChatId !== null) currentChatId = null; // live chat now
+  if (currentChatId !== null && !resumed) currentChatId = null; // fresh live chat; resumed chats keep their id
 
   lastUserText = trimmed;
   isResponding = true;
@@ -128,6 +131,7 @@ export function startNewChat() {
   resetConversation();
   lastUserText = '';
   currentChatId = null;
+  resumed = false;
   emit({ type: 'chat-reset' });
 }
 
@@ -148,8 +152,30 @@ export function loadHistory(historyId) {
   resetConversation();
 
   currentChatId = historyId;
+  resumed = false;
   emit({ type: 'history-loaded', conversation, historyId });
 }
+
+/**
+ * Resume a persisted chat: load its conversation, restore the response
+ * engine's no-repeat memory, and mark it continuable. Subsequent sends
+ * append to this chat rather than starting fresh (R8).
+ * @param {{ id?: string, conversation: {text: string, sender: 'user'|'ai'}[], memory?: object }} chat
+ */
+export function resumeChat(chat) {
+  if (!chat || !Array.isArray(chat.conversation)) return;
+  invalidateSession();
+  isResponding = false;
+  restoreConversationState(chat.memory);
+  const lastUser = [...chat.conversation].reverse().find((m) => m.sender === 'user');
+  lastUserText = lastUser ? lastUser.text : '';
+  currentChatId = chat.id ?? null;
+  resumed = true;
+  emit({ type: 'history-loaded', conversation: chat.conversation, historyId: chat.id });
+}
+
+/** @returns {boolean} whether the active chat is a resumable persisted chat */
+export const isResumedChat = () => resumed;
 
 /** @returns {boolean} whether `historyId` names a pre-baked conversation */
 export const hasHistory = (historyId) => Boolean(chatHistories[historyId]);

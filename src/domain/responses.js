@@ -144,6 +144,31 @@ export function resetConversation() {
 }
 
 /**
+ * Serialize the per-conversation state (no-repeat memory + arrogance level)
+ * so a persisted chat can resume with its history intact.
+ * @returns {{ seen: Record<string, number[]>, arrogance: number }}
+ */
+export function exportConversationState() {
+  const seen = {};
+  for (const [key, indices] of seenIndices) seen[key] = [...indices];
+  return { seen, arrogance: arroganceLevel };
+}
+
+/**
+ * Restore per-conversation state previously exported.
+ * @param {{ seen: Record<string, number[]>, arrogance: number } | undefined} snapshot
+ */
+export function restoreConversationState(snapshot) {
+  seenIndices.clear();
+  arroganceLevel = 0;
+  if (!snapshot) return;
+  for (const [key, indices] of Object.entries(snapshot.seen || {})) {
+    seenIndices.set(key, new Set(indices));
+  }
+  arroganceLevel = snapshot.arrogance || 0;
+}
+
+/**
  * Pick a random pool entry, avoiding repeats until the pool is exhausted.
  * @param {string[]} pool
  * @param {string} poolKey

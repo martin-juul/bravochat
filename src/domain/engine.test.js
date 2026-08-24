@@ -215,6 +215,87 @@ describe('loadHistory', () => {
   });
 });
 
+describe('resumeChat', () => {
+  it('emits history-loaded with the conversation and marks the chat continuable', async () => {
+    const engine = await freshEngine();
+    const { events, listener } = collector();
+    engine.subscribe(listener);
+    const conversation = [
+      { text: 'tell me about your hair', sender: 'user' },
+      { text: 'My HAIR?!', sender: 'ai' },
+      { text: 'yes', sender: 'user' },
+      { text: 'Forty-seven minutes', sender: 'ai' },
+    ];
+    engine.resumeChat({ id: 'p:x1', conversation });
+    const loaded = events.find((e) => e.type === 'history-loaded');
+    expect(loaded.conversation).toHaveLength(4);
+    expect(engine.getCurrentChatId()).toBe('p:x1');
+    expect(engine.isResumedChat()).toBe(true);
+    expect(events.some((e) => e.type === 'session-invalidated')).toBe(true);
+  });
+
+  it('seeds regenerate from the last user message of the resumed conversation', async () => {
+    const engine = await freshEngine();
+    engine.resumeChat({ id: 'p:x1', conversation: [
+      { text: 'workout routine', sender: 'user' },
+      { text: 'MUSCLES?!', sender: 'ai' },
+    ] });
+    expect(engine.getLastUserText()).toBe('workout routine');
+    const { events, listener } = collector();
+    engine.subscribe(listener);
+    engine.regenerate();
+    vi.advanceTimersByTime(1600);
+    expect(events.filter((e) => e.type === 'response-ready')).toHaveLength(1);
+  });
+
+  it('send after resume keeps the chat id (no duplicate chat, R9)', async () => {
+    const engine = await freshEngine();
+    engine.resumeChat({ id: 'p:x1', conversation: [
+      { text: 'hi', sender: 'user' },
+      { text: 'Hey sugar', sender: 'ai' },
+    ] });
+    engine.send('more talk');
+    expect(engine.getCurrentChatId()).toBe('p:x1');
+  });
+
+  it('restores no-repeat memory across the resume boundary (AE3 unit)', async () => {
+    const engine = await freshEngine();
+    // Exhaust the hello pool in the snapshot, resume, and ask hello again:
+    // pickUnseen must reset the pool rather than repeat a served line.
+    const seen = { hello: responses.hello.map((_, i) => i) };
+    engine.resumeChat({ id: 'p:x1', memory: { seen, arrogance: 4 }, conversation: [
+      { text: 'hello', sender: 'user' },
+      { text: 'x', sender: 'ai' },
+    ] });
+    const { events, listener } = collector();
+    engine.subscribe(listener);
+    engine.send('hello');
+    vi.advanceTimersByTime(2500);
+    const ready = events.find((e) => e.type === 'response-ready');
+    expect(typeof ready.text).toBe('string');
+    expect(ready.text.length).toBeGreaterThan(0);
+  });
+
+  it('startNewChat after resume clears the resumed state (R10)', async () => {
+    const engine = await freshEngine();
+    engine.resumeChat({ id: 'p:x1', conversation: [{ text: 'hi', sender: 'user' }] });
+    engine.startNewChat();
+    expect(engine.isResumedChat()).toBe(false);
+    expect(engine.getCurrentChatId()).toBeNull();
+    engine.send('fresh');
+    expect(engine.getCurrentChatId()).toBeNull();
+  });
+
+  it('is a no-op with a malformed chat', async () => {
+    const engine = await freshEngine();
+    const { events, listener } = collector();
+    engine.subscribe(listener);
+    engine.resumeChat(null);
+    engine.resumeChat({ conversation: 'nope' });
+    expect(events).toEqual([]);
+  });
+});
+
 describe('subscriptions', () => {
   it('unsubscribe stops delivery', async () => {
     const engine = await freshEngine();
