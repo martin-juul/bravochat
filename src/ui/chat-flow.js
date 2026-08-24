@@ -110,6 +110,7 @@ export function sendMessage() {
     const response = composeResponse(text);
     addMessage(response, 'ai', { regenerable: true });
     setIsResponding(false);
+    sendBtn.disabled = inputEl.value.trim() === '';
     inputEl.focus();
   }, delay);
 }
@@ -138,6 +139,7 @@ export function regenerateResponse() {
     const response = composeResponse(lastUserText);
     addMessage(response, 'ai', { regenerable: true });
     setIsResponding(false);
+    sendBtn.disabled = inputEl.value.trim() === '';
     inputEl.focus();
   }, delay);
 }

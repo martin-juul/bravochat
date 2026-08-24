@@ -8,10 +8,11 @@ The project is designed to be lightweight, performant, and frameworkless (vanill
 ## Tech Stack & Constraints
 - **Language:** HTML5, CSS3, Vanilla JavaScript (ES6+ modules)
 - **Build tool:** Vite 8 (`package.json` devDependency) — serves the app and bundles it for production. Source maps are emitted in production builds (`vite.config.js`).
-- **Test runner:** Vitest — zero-config; picks up `src/**/*.test.js`.
+- **Test runner:** Vitest (unit, `src/**/*.test.js`) + Playwright (e2e, `tests/e2e/*.spec.js`) — the e2e suite runs against `vite preview` in real Chromium/Firefox/WebKit/mobile.
+- **Vitest/Playwright and @playwright/test are the only allowed test dependencies;** nothing else ships to production.
 - **Rendering:** HTML5 Canvas (for background/particle effects), DOM manipulation (for UI).
 - **Fonts:** Google Fonts (`Bowlby One SC` for display, `Nunito` for body text).
-- **Commands:** `npm run dev` (dev server), `npm run build` (production build), `npm run preview` (serve the built output), `npx vitest run` (tests).
+- **Commands:** `npm run dev` (dev server), `npm run build` (production build), `npm run preview` (serve the built output), `npm test` (Vitest unit), `npm run test:e2e` (Playwright e2e, auto-builds and serves preview).
 - **No UI frameworks, no additional dependencies** beyond Vite and Vitest.
 
 ## File Structure

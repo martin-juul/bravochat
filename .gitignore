@@ -2,3 +2,5 @@ node_modules/
 dist/
 .idea/
 .pi/
+playwright-report/
+test-results/

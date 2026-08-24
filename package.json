@@ -5,7 +5,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "repository": {
     "type": "git",
@@ -22,6 +27,7 @@
   },
   "homepage": "https://github.com/martin-juul/bravochat#readme",
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "vite": "^8.2.2",
     "vitest": "^4.1.11"
   }
