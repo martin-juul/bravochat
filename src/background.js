@@ -5,6 +5,7 @@ const bgCanvas = document.getElementById('bg-canvas');
 
 // Wire resize handling and start the single animation loop.
 export function initBackground() {
+  window.addEventListener('resize', resizeBgCanvas);
   resizeBgCanvas();
   requestAnimationFrame(animateBg);
 }
@@ -22,8 +23,6 @@ function resizeBgCanvas() {
   bgCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to avoid compounding scale
   bgCtx.scale(dpr, dpr);
 }
-
-window.addEventListener('resize', resizeBgCanvas);
 
 const bgShapes = [
   { x: 0.08, y: 0.12, type: 'star5', color: 'rgba(255, 61, 127, 0.4)', size: 40, phase: 0 },
