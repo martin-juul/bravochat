@@ -13,6 +13,20 @@ import {
 
 let resizeTimeout = null;
 
+// ============ ELEMENTS ============
+const messagesEl = document.getElementById('messages');
+const inputEl = document.getElementById('message-input');
+const sendBtn = document.getElementById('send-btn');
+const chatArea = document.getElementById('chat-area');
+const newChatBtn = document.getElementById('new-chat');
+const clearBtn = document.getElementById('clear-btn');
+const infoBtn = document.getElementById('info-btn');
+const hamburger = document.getElementById('hamburger');
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('overlay');
+const modalBackdrop = document.getElementById('modal-backdrop');
+const modalClose = document.getElementById('modal-close');
+
 // ============ FUNCTIONS ============
 function showWelcome() {
   setWelcomeShown(true);
