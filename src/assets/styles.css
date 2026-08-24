@@ -51,6 +51,7 @@ body {
     display: grid;
     grid-template-columns: 280px 1fr;
     height: 100vh;
+    height: 100dvh;
     position: relative;
     z-index: 1;
 }
@@ -284,6 +285,7 @@ body {
     display: flex;
     flex-direction: column;
     height: 100vh;
+    height: 100dvh;
     overflow: hidden;
     position: relative;
 }
