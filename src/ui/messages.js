@@ -1,12 +1,14 @@
 // Rendering: welcome screen, message bubbles, and the typing indicator.
 import { johnnySVG } from '../assets/avatar.js';
 import { typingPhrases } from '../domain/responses.js';
-import { getWelcomeShown, setWelcomeShown } from '../domain/state.js';
 import { messagesEl, chatArea, scrollToBottom } from './dom.js';
+
+/** @type {boolean} whether the welcome screen is currently rendered (UI-only state) */
+let welcomeShown = true;
 
 /** Renders the welcome screen with suggestion chips and clears chat state. */
 export function showWelcome() {
-  setWelcomeShown(true);
+  welcomeShown = true;
   messagesEl.classList.remove('switching');
   messagesEl.innerHTML = `
     <div class="welcome-screen">
@@ -88,9 +90,9 @@ export function createMessageElement(text, sender) {
  *   regenerate control to this message and remove it from any older one.
  */
 export function addMessage(text, sender, opts = {}) {
-  if (getWelcomeShown()) {
+  if (welcomeShown) {
     messagesEl.replaceChildren();
-    setWelcomeShown(false);
+    welcomeShown = false;
   }
 
   const msg = createMessageElement(text, sender);
@@ -120,9 +122,9 @@ let typingIndex = 0;
 
 /** Append the typing indicator and cycle its status phrase every 2s. */
 export function showTyping() {
-  if (getWelcomeShown()) {
+  if (welcomeShown) {
     messagesEl.replaceChildren();
-    setWelcomeShown(false);
+    welcomeShown = false;
   }
 
   hideTyping(); // never stack indicators
@@ -172,7 +174,7 @@ export function hideTyping() {
  * @param {import('../domain/histories.js').HistoryMessage[]} conversation
  */
 export function renderConversation(conversation) {
-  setWelcomeShown(false);
+  welcomeShown = false;
   messagesEl.replaceChildren(); // High performance clear
 
   // Use DocumentFragment to batch DOM insertions

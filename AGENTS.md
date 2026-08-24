@@ -27,20 +27,21 @@ src/
   ui/               Presentation layer (owns all chat-surface DOM access)
     dom.js            Shared element lookups + DOM helpers (scrollToBottom, autoResize, closeMobileSidebar)
     messages.js       Rendering: welcome screen, message bubbles, typing indicator, conversation rendering
-    chat-flow.js      Orchestration: sendMessage, loadChatHistory, startNewChat, session-token race guard, chip clicks
+    chat-flow.js      Orchestration wiring: UI commands into the engine, engine events into rendering (initChatFlow)
     chrome.js         Sidebar/overlay/modal wiring + all event listeners (exports initApp)
     background.js     Canvas engine: atomic pattern, floating shapes, sparkle particles (exports initBackground, spawnSparkles)
   domain/           Pure, DOM-free logic
     responses.js      Response engine: keyword pools, typing phrases, getResponse routing
+    engine.js         Conversation engine: session-token race guard, response scheduling, chat switching, event subscriptions (DOM-free)
+    engine.test.js    Vitest unit tests for the conversation engine (race guards, scheduling, events)
     histories.js      Pre-baked chat histories keyed by sidebar data-id
-    state.js          App state: session token, currentChatId, isResponding, welcomeShown accessors
-    responses.test.js Vitest unit tests for the response engine, histories, avatar, and state
+    responses.test.js Vitest unit tests for the response engine, histories, and avatar
   assets/
     styles.css       All application styles (theme variables, retro borders, responsive rules)
     avatar.js        Canonical Johnny Bravo SVG string
 ```
 
-**Layering rule (Fowler's presentation/domain separation at folder scale):** dependencies run one way, `ui/ → domain/`, with `assets/` as leaves. **Module boundary rule:** `domain/` and `assets/` must stay DOM-free so tests can import them without a browser environment. All chat-surface DOM access lives in `ui/`; canvas DOM access lives in `ui/background.js`. Within `ui/`, `dom.js` owns element references, `messages.js` owns rendering, `chat-flow.js` owns orchestration and the session-token guard, and `chrome.js` owns event wiring.
+**Layering rule (Fowler's presentation/domain separation at folder scale):** dependencies run one way, `ui/ → domain/`, with `assets/` as leaves. **Module boundary rule:** `domain/` and `assets/` must stay DOM-free so tests can import them without a browser environment. All chat-surface DOM access lives in `ui/`; canvas DOM access lives in `ui/background.js`. Within `ui/`, `dom.js` owns element references, `messages.js` owns rendering (including UI-only state like `welcomeShown`), `chat-flow.js` owns wiring between engine commands/events and rendering, and `chrome.js` owns event wiring.
 
 ## Architecture
 
@@ -57,10 +58,13 @@ There is no backend or API. Responses are pre-written and selected via regex key
 - **Logic:** The `getResponse(userText)` function evaluates the user's input against a series of regular expressions. If a match is found, it pulls a random response from that specific category array; otherwise, it falls back to the `default` array.
 - **Tests:** `src/domain/responses.test.js` covers category routing (including the greeting length guard), the default fallback, pool non-emptiness, history integrity, and the avatar markup.
 
-### 3. State & Race Conditions (`src/domain/state.js`)
+### 3. Conversation Engine (`src/domain/engine.js`)
 Because the app relies on `setTimeout` for the typing indicator, race conditions can occur if the user spams "New Chat" or clicks history items rapidly.
-- **`sessionToken`:** An incrementing integer, exposed via `currentSessionToken()` / `incrementSessionToken()`. Every time a new chat is started or a history item is loaded, the token increments (exactly in `loadChatHistory` and `startNewChat` in `ui/chat-flow.js`). Pending `setTimeout` callbacks check if their captured token matches the current token before firing. If they don't match, the callback is silently dropped.
-- **`currentChatId`:** Tracks which chat history is currently being viewed (or `null` if it's a new live chat).
+- **DOM-free engine:** `src/domain/engine.js` owns the session token, responding state, last-user-message memory, and chat switching. It exposes commands (`send`, `regenerate`, `startNewChat`, `loadHistory`) and a callback subscription API emitting `typing-started`, `response-ready`, `session-invalidated`, `chat-reset`, and `history-loaded` events.
+- **`sessionToken`:** An incrementing integer internal to the engine. Every `startNewChat` or `loadHistory` invalidates pending scheduled responses; scheduled callbacks check their captured token against the current one before firing. If they don't match, the callback is silently dropped (the `session-invalidated` event still fires so the UI can clean up the typing indicator).
+- **UI subscription:** `src/ui/chat-flow.js` subscribes once (`initChatFlow`) and performs all presentation effects in reaction to engine events. Commands emit synchronously; the UI renders the user bubble before calling `send`.
+- **`currentChatId`:** Tracks which chat history is currently being viewed (or `null` for a new live chat); cleared by `startNewChat`, which makes the same-history re-click guard plain id equality. `welcomeShown` is UI-only state in `src/ui/messages.js`.
+- **Tests:** `src/domain/engine.test.js` covers race guards, scheduling ranges, no-op guards, and event emission with fake timers and no DOM.
 
 ### 4. Pre-baked Chat Histories (`src/domain/histories.js`)
 The sidebar contains "Recent Chats." Clicking these loads hardcoded conversations from the `chatHistories` object, simulating a chat application's history feature. The keys match the `data-id` attributes of the sidebar history items in `index.html`.

@@ -1,147 +1,83 @@
-// Chat orchestration: sending, history loading, new chat, and the session-token race guard.
-import { composeResponse, resetConversation } from '../domain/responses.js';
-import { chatHistories } from '../domain/histories.js';
+// Chat wiring: UI commands into the engine, engine events into rendering.
+// All orchestration (state, race guards, response scheduling) lives in
+// src/domain/engine.js; this module only renders presentation effects.
 import {
-  currentSessionToken,
-  getCurrentChatId,
+  send as engineSend,
+  regenerate as engineRegenerate,
+  startNewChat as engineStartNewChat,
+  loadHistory as engineLoadHistory,
+  subscribe,
   getIsResponding,
-  getWelcomeShown,
-  incrementSessionToken,
-  setCurrentChatId,
-  setIsResponding,
-  setWelcomeShown,
-} from '../domain/state.js';
+  getCurrentChatId,
+  getLastUserText,
+  hasHistory,
+} from '../domain/engine.js';
 import { spawnSparkles } from './background.js';
+import { messagesEl, inputEl, sendBtn, newChatBtn, closeMobileSidebar } from './dom.js';
 import {
-  messagesEl,
-  inputEl,
-  sendBtn,
-  newChatBtn,
-  sidebar,
-  overlay,
-  scrollToBottom,
-  closeMobileSidebar,
-} from './dom.js';
-import { showWelcome, setActiveHistoryItem, addMessage, showTyping, hideTyping, renderConversation } from './messages.js';
+  addMessage,
+  showWelcome,
+  showTyping,
+  hideTyping,
+  renderConversation,
+  setActiveHistoryItem,
+} from './messages.js';
 
 /**
- * Load a pre-baked history into the chat surface, guarding against session races.
- * @param {string} historyId key into `chatHistories` (matches sidebar data-id)
- */
-export function loadChatHistory(historyId) {
-  const conversation = chatHistories[historyId];
-  if (!conversation) return;
-
-  if (getCurrentChatId() === historyId && !getWelcomeShown()) return;
-
-  setIsResponding(false);
-  hideTyping();
-  incrementSessionToken(); // Invalidate any pending live chat responses
-  resetConversation();
-
-  setCurrentChatId(historyId);
-  setActiveHistoryItem(historyId);
-
-  messagesEl.classList.add('switching');
-
-  setTimeout(() => {
-    renderConversation(conversation);
-    messagesEl.classList.remove('switching');
-    closeMobileSidebar();
-  }, 220);
-}
-
-/** Reset to the welcome screen, invalidating any pending responses. */
-export function startNewChat() {
-  incrementSessionToken(); // Invalidate pending responses
-  setIsResponding(false);
-  hideTyping();
-  resetConversation();
-  lastUserText = '';
-  showWelcome();
-  setActiveHistoryItem(null);
-  newChatBtn.classList.add('pulse');
-  setTimeout(() => newChatBtn.classList.remove('pulse'), 500);
-  inputEl.focus();
-  closeMobileSidebar();
-}
-
-/** @type {string} text of the most recent user message, for regeneration */
-let lastUserText = '';
-
-/**
- * Send the current input as a user message and schedule the mock AI reply.
- * No-op when the input is empty or a response is already pending.
+ * Send the current input: render the user bubble and sparkles around the
+ * engine call (commands emit synchronously, so the bubble renders first).
  */
 export function sendMessage() {
   const text = inputEl.value.trim();
   if (!text || getIsResponding()) return;
 
-  if (getCurrentChatId() !== null) {
-    setCurrentChatId(null);
-    setActiveHistoryItem(null);
-  }
+  if (getCurrentChatId() !== null) setActiveHistoryItem(null); // live chat now
 
-  if (getWelcomeShown()) {
-    messagesEl.replaceChildren();
-    setWelcomeShown(false);
-  }
+  inputEl.value = '';
+  inputEl.style.height = 'auto';
 
   const rect = sendBtn.getBoundingClientRect();
   spawnSparkles(rect.left + rect.width / 2, rect.top + rect.height / 2);
 
   addMessage(text, 'user');
-  lastUserText = text;
-  inputEl.value = '';
-  inputEl.style.height = 'auto';
   sendBtn.disabled = true;
 
-  setIsResponding(true);
-  showTyping();
-
-  const currentSession = currentSessionToken();
-  const delay = 1000 + Math.random() * 1500;
-
-  setTimeout(() => {
-    // If session changed, drop this response entirely
-    if (currentSession !== currentSessionToken()) return;
-
-    hideTyping();
-    const response = composeResponse(text);
-    addMessage(response, 'ai', { regenerable: true });
-    setIsResponding(false);
-    sendBtn.disabled = inputEl.value.trim() === '';
-    inputEl.focus();
-  }, delay);
+  engineSend(text);
 }
 
 /**
- * Regenerate the last AI response: remove it and re-answer the last user message.
+ * Regenerate the last AI response: remove the old bubble, then ask the
+ * engine to re-answer the last user message.
  * No-op when a response is pending or there is nothing to regenerate.
  */
 export function regenerateResponse() {
-  if (getIsResponding() || !lastUserText) return;
+  if (getIsResponding() || !getLastUserText()) return;
 
-  // Remove the last AI message (the one carrying the regenerate button)
   const last = /** @type {HTMLElement} */ (messagesEl.querySelector('.message.ai:last-of-type'));
   if (last) last.remove();
 
-  setIsResponding(true);
-  showTyping();
+  engineRegenerate();
+}
 
-  const currentSession = currentSessionToken();
-  const delay = 800 + Math.random() * 800;
+/** Reset to the welcome screen via the engine. */
+export function startNewChat() {
+  newChatBtn.classList.add('pulse');
+  setTimeout(() => newChatBtn.classList.remove('pulse'), 500);
+  engineStartNewChat();
+  inputEl.focus();
+}
 
-  setTimeout(() => {
-    if (currentSession !== currentSessionToken()) return;
-
-    hideTyping();
-    const response = composeResponse(lastUserText);
-    addMessage(response, 'ai', { regenerable: true });
-    setIsResponding(false);
-    sendBtn.disabled = inputEl.value.trim() === '';
-    inputEl.focus();
-  }, delay);
+/**
+ * Load a pre-baked history into the chat surface via the engine.
+ * Same-history guard mirrors the engine's: re-clicking the active history
+ * is a no-op (the engine clears the id on new chat, so this matches the old
+ * combined welcome-screen guard).
+ * @param {string} historyId key into `chatHistories` (matches sidebar data-id)
+ */
+export function loadChatHistory(historyId) {
+  if (getCurrentChatId() === historyId || !hasHistory(historyId)) return;
+  messagesEl.classList.add('switching');
+  engineLoadHistory(historyId);
 }
 
 /**
@@ -157,4 +93,53 @@ export function handleChipClick(e) {
   }
 }
 
-export { scrollToBottom };
+/** Wire engine events to rendering and focus the composer. Called once from initApp. */
+export function initChatFlow() {
+  subscribe(handleEngineEvent);
+  setTimeout(() => inputEl.focus(), 300);
+}
+
+/**
+ * Render engine events. Presentation only — no state decisions here.
+ * @param {{ type: string, [key: string]: unknown }} event
+ */
+function handleEngineEvent(event) {
+  switch (event.type) {
+    case 'typing-started':
+      showTyping();
+      break;
+
+    case 'response-ready':
+      hideTyping();
+      addMessage(/** @type {string} */ (event.text), 'ai', { regenerable: event.regenerable === true });
+      sendBtn.disabled = inputEl.value.trim() === '';
+      inputEl.focus();
+      break;
+
+    case 'session-invalidated':
+      hideTyping();
+      sendBtn.disabled = inputEl.value.trim() === '';
+      break;
+
+    case 'chat-reset':
+      showWelcome();
+      setActiveHistoryItem(null);
+      closeMobileSidebar();
+      break;
+
+    case 'history-loaded': {
+      // Sidebar highlight updates immediately; the visual switch fade plays out
+      // over 220ms (KTD4: the UI owns the presentation delay). The staleness
+      // guard keeps a New Chat clicked during the window from being stomped.
+      const id = /** @type {string} */ (event.historyId);
+      setActiveHistoryItem(id);
+      setTimeout(() => {
+        if (getCurrentChatId() !== id) return;
+        renderConversation(/** @type {import('../domain/histories.js').HistoryMessage[]} */ (event.conversation));
+        messagesEl.classList.remove('switching');
+        closeMobileSidebar();
+      }, 220);
+      break;
+    }
+  }
+}
