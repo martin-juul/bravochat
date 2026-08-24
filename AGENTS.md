@@ -24,9 +24,13 @@ docs/
   solutions/       # documented solutions to past problems (bugs, best practices, workflow patterns), organized by category with YAML frontmatter (module, tags, problem_type)
 src/
   main.js           Entry point — calls initBackground() and initApp()
+  vdom/             Mini Bravo DOM — hand-rolled keyed-diff virtual DOM (zero dependencies)
+    core.js           Pure vnode model + diff logic (h, diffChildren, diffProps): DOM-free, Node-testable
+    core.test.js      Vitest unit tests + op-count benchmarks (append = 1 insert, reverse = 0 DOM churn)
+    dom.js            DOM renderer: createEl/patchEl/patchChildren/ownContainer execute the diff plans
   ui/               Presentation layer (owns all chat-surface DOM access)
     dom.js            Shared element lookups + DOM helpers (scrollToBottom, autoResize, closeMobileSidebar)
-    messages.js       Rendering: welcome screen, message bubbles, typing indicator, conversation rendering
+    messages.js       Rendering via the vdom: a message-list data model derives vnodes; keyed patches mutate the DOM (welcome screen, bubbles, typing indicator)
     chat-flow.js      Orchestration wiring: UI commands into the engine, engine events into rendering (initChatFlow)
     chrome.js         Sidebar/overlay/modal wiring + all event listeners (exports initApp)
     background.js     Canvas engine: atomic pattern, floating shapes, sparkle particles (exports initBackground, spawnSparkles)
@@ -41,7 +45,7 @@ src/
     avatar.js        Canonical Johnny Bravo SVG string
 ```
 
-**Layering rule (Fowler's presentation/domain separation at folder scale):** dependencies run one way, `ui/ → domain/`, with `assets/` as leaves. **Module boundary rule:** `domain/` and `assets/` must stay DOM-free so tests can import them without a browser environment. All chat-surface DOM access lives in `ui/`; canvas DOM access lives in `ui/background.js`. Within `ui/`, `dom.js` owns element references, `messages.js` owns rendering (including UI-only state like `welcomeShown`), `chat-flow.js` owns wiring between engine commands/events and rendering, and `chrome.js` owns event wiring.
+**Layering rule (Fowler's presentation/domain separation at folder scale):** dependencies run one way, `ui/ → vdom/ → domain/`, with `assets/` as leaves. **Module boundary rule:** `domain/`, `vdom/core.js`, and `assets/` must stay DOM-free so tests can import them without a browser environment. `vdom/dom.js` owns all vdom DOM access; all other chat-surface DOM access lives in `ui/`; canvas DOM access lives in `ui/background.js`. Within `ui/`, `dom.js` owns element references, `messages.js` owns rendering (including UI-only state like `welcomeShown`) through the vdom render entry point, `chat-flow.js` owns wiring between engine commands/events and rendering, and `chrome.js` owns event wiring.
 
 ## Architecture
 
