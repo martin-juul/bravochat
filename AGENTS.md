@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Project Overview
-**Johnny GPT (Oh Mama Edition)** is a single-page, ChatGPT-style web application that parodies the AI chat experience using the persona and aesthetic of Johnny Bravo. Instead of real AI, it uses a rule-based response system to generate in-character jokes, pickup lines, and arrogant musings.
+**Chad GPT (Oh Mama Edition)** is a single-page, ChatGPT-style web application that parodies the AI chat experience using the persona and aesthetic of Johnny Bravo. Instead of real AI, it uses a rule-based response system to generate in-character jokes, pickup lines, and arrogant musings.
 
 The project is designed to be lightweight, performant, and frameworkless (vanilla ES modules — no React, Vue, or other UI framework).
 

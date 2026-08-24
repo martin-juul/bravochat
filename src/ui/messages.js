@@ -12,7 +12,7 @@ export function showWelcome() {
       <div class="welcome-avatar">${johnnySVG}</div>
       <h1 class="welcome-title">Hey There, Sugar!</h1>
       <p class="welcome-subtitle">
-        I'm <span class="accent">Johnny GPT</span> — your artificially handsome companion. I don't actually know anything, but I look FABULOUS not knowing it. Ask me anything, baby!
+        I'm <span class="accent">Chad GPT</span> — your artificially handsome companion. I don't actually know anything, but I look FABULOUS not knowing it. Ask me anything, baby!
       </p>
       <div class="suggestion-chips">
         <button class="chip" data-text="Tell me a joke, pretty boy">
