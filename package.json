@@ -1,7 +1,7 @@
 {
   "name": "bravochat",
   "version": "1.0.0",
-  "description": "Johnny GPT (Oh Mama Edition) - ChatGPT-style parody app",
+  "description": "Chad GPT (Oh Mama Edition) - ChatGPT-style parody app",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
