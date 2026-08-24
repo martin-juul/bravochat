@@ -18,6 +18,9 @@ The project is designed to be lightweight, performant, and frameworkless (vanill
 
 ```
 index.html          Slim entry shell: fonts, static markup (sidebar, topbar, modal), links styles.css, loads /src/main.js
+public/            Static files Vite serves verbatim (favicon set, web manifest)
+docs/
+  solutions/       # documented solutions to past problems (bugs, best practices, workflow patterns), organized by category with YAML frontmatter (module, tags, problem_type)
 src/
   main.js           Entry point — calls initBackground() and initApp()
   ui/               Presentation layer (owns all chat-surface DOM access)
