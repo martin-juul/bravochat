@@ -1,7 +1,7 @@
 /**
  * @file App chrome: sidebar, overlay, info modal, and all event-listener wiring (initApp).
  */
-import { getIsResponding } from '../domain/state.js';
+import { getIsResponding } from '../domain/engine.js';
 import {
   inputEl,
   sendBtn,
@@ -17,7 +17,7 @@ import {
   autoResize,
 } from './dom.js';
 import { showWelcome } from './messages.js';
-import { sendMessage, startNewChat, loadChatHistory, handleChipClick, regenerateResponse } from './chat-flow.js';
+import { sendMessage, startNewChat, loadChatHistory, handleChipClick, regenerateResponse, initChatFlow } from './chat-flow.js';
 import { spawnSparkles } from './background.js';
 
 /** Open the mobile sidebar overlay. */
@@ -109,5 +109,5 @@ export function initApp() {
 
   // ============ INIT ============
   showWelcome();
-  setTimeout(() => inputEl.focus(), 300);
+  initChatFlow();
 }

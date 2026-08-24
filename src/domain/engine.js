@@ -50,6 +50,9 @@ export const getIsResponding = () => isResponding;
 /** @returns {string | null} the active chat-history key, or null for a live chat */
 export const getCurrentChatId = () => currentChatId;
 
+/** @returns {string} the most recent user message text ("" before any send) */
+export const getLastUserText = () => lastUserText;
+
 // ============ INTERNALS ============
 
 /** Invalidate all in-flight responses that captured an older token. */
