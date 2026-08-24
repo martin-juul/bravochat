@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { getResponse, responses, typingPhrases } from './responses.js';
 import { chatHistories } from './histories.js';
-import { johnnySVG } from './avatar.js';
+import { johnnySVG } from '../assets/avatar.js';
 
 // The sidebar history ids in index.html are the contract's other side.
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
 const sidebarIds = [...new Set([...html.matchAll(/data-id="([^"]+)"/g)].map((m) => m[1]))];
 
 // assert the drawn response is a member of the given pool
