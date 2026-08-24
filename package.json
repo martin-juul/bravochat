@@ -11,8 +11,10 @@
     "type": "git",
     "url": "git+https://github.com/martin-juul/bravochat.git"
   },
-  "keywords": [],
-  "author": "",
+  "author": {
+    "name": "Martin Christiansen",
+    "email": "martin@juul.xyz"
+  },
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
