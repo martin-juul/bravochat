@@ -6,6 +6,7 @@ const bgCanvas = document.getElementById('bg-canvas');
 // Wire resize handling and start the single animation loop.
 export function initBackground() {
   resizeBgCanvas();
+  requestAnimationFrame(animateBg);
 }
 const bgCtx = bgCanvas.getContext('2d');
 let W, H;
@@ -177,9 +178,6 @@ function animateBg(now) {
     bgCtx.fill();
     bgCtx.restore();
   }
-
-  requestAnimationFrame(animateBg);
-}
 
   requestAnimationFrame(animateBg);
 }
