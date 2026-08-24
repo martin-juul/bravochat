@@ -87,6 +87,13 @@ test('new chat resets to the welcome screen', async ({ page }) => {
   await page.locator('#new-chat').click();
   await expect(page.getByRole('heading', { name: 'Hey There, Sugar!' })).toBeVisible();
   await expect(page.locator('.message')).toHaveCount(0);
+
+  // Resurrection guard: sending after New Chat must not drag the old
+  // conversation's bubbles back (messages model reset on chat-reset).
+  await page.locator('#message-input').fill('tell me a joke');
+  await page.locator('#message-input').press('Enter');
+  await expect(page.locator('.message.user')).toHaveCount(1);
+  await expect(page.locator('.message')).toHaveCount(1);
 });
 
 test('history items load pre-baked conversations', async ({ page }) => {

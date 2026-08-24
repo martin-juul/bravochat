@@ -21,6 +21,7 @@ import {
   hideTyping,
   renderConversation,
   setActiveHistoryItem,
+  removeLastAiMessage,
 } from './messages.js';
 
 /**
@@ -53,8 +54,7 @@ export function sendMessage() {
 export function regenerateResponse() {
   if (getIsResponding() || !getLastUserText()) return;
 
-  const last = /** @type {HTMLElement} */ (messagesEl.querySelector('.message.ai:last-of-type'));
-  if (last) last.remove();
+  removeLastAiMessage();
 
   engineRegenerate();
 }
