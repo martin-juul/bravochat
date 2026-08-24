@@ -238,6 +238,15 @@ body {
     flex-shrink: 0;
 }
 
+/* Persisted real chats (rendered below the pre-baked fakes) */
+#saved-chats {
+    padding: 4px 12px 12px;
+}
+
+#saved-chats:empty {
+    display: none;
+}
+
 .history-item-text {
     flex: 1;
     white-space: nowrap;

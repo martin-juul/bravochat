@@ -18,6 +18,7 @@ import {
 } from './dom.js';
 import { showWelcome } from './messages.js';
 import { sendMessage, startNewChat, loadChatHistory, handleChipClick, regenerateResponse, initChatFlow } from './chat-flow.js';
+import { createChatStore } from '../domain/chat-store.js';
 import { spawnSparkles } from './background.js';
 
 /** Open the mobile sidebar overlay. */
@@ -90,13 +91,15 @@ export function initApp() {
     }
   });
 
-  // Event Delegation for history items
-  document.getElementById('chat-history').addEventListener('click', (e) => {
+  // Event Delegation for history items (pre-baked fakes + persisted real chats)
+  const onHistoryClick = (e) => {
     const item = e.target.closest('.history-item');
     if (item && item.dataset.id) {
       loadChatHistory(item.dataset.id);
     }
-  });
+  };
+  document.getElementById('chat-history').addEventListener('click', onHistoryClick);
+  document.getElementById('saved-chats').addEventListener('click', onHistoryClick);
 
   // Event Delegation for suggestion chips and the regenerate button
   messagesEl.addEventListener('click', handleChipClick);
@@ -109,5 +112,13 @@ export function initApp() {
 
   // ============ INIT ============
   showWelcome();
-  initChatFlow();
+  initChatFlow(createChatStore(localStorageAdapter()));
+}
+
+/** localStorage adapter for the chat store's storage seam (DOM access lives in ui/). */
+function localStorageAdapter() {
+  return {
+    getItem: (key) => window.localStorage.getItem(key),
+    setItem: (key, value) => window.localStorage.setItem(key, value),
+  };
 }
