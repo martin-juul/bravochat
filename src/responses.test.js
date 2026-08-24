@@ -70,3 +70,14 @@ describe('avatar', () => {
     expect(johnnySVG).toContain('</svg>');
   });
 });
+
+describe('state', () => {
+  it('starts the session token at 0 and increments it', async () => {
+    const mod = await import('./state.js');
+    expect(mod.currentSessionToken()).toBe(0);
+    mod.incrementSessionToken();
+    expect(mod.currentSessionToken()).toBe(1);
+    expect(mod.getWelcomeShown()).toBe(true);
+    expect(mod.getCurrentChatId()).toBeNull();
+  });
+});
