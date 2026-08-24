@@ -1,0 +1,72 @@
+import { describe, it, expect } from 'vitest';
+import { getResponse, responses, typingPhrases } from './responses.js';
+import { chatHistories } from './histories.js';
+import { johnnySVG } from './avatar.js';
+
+// assert the drawn response is a member of the given pool
+
+describe('getResponse routing', () => {
+  it('routes short greetings to the hello pool', () => {
+    expect(responses.hello).toContain(getResponse('hello'));
+    expect(responses.hello).toContain(getResponse('hey there, sugar'));
+  });
+
+  it('does not route long greetings to the hello pool (length guard)', () => {
+    const longHello = 'hello, I was wondering if you could help me understand something today';
+    expect(longHello.length).toBeGreaterThanOrEqual(20);
+    expect(responses.hello).not.toContain(getResponse(longHello));
+  });
+
+  it('routes dating keywords to the date pool', () => {
+    expect(responses.date).toContain(getResponse('want to go on a date?'));
+  });
+
+  it('routes mama keywords to the mama pool', () => {
+    expect(responses.mama).toContain(getResponse('tell me about your mama'));
+  });
+
+  it('routes workout keywords to the muscle pool', () => {
+    expect(responses.muscle).toContain(getResponse("what's your workout routine?"));
+  });
+
+  it('routes hair keywords to the hair pool', () => {
+    expect(responses.hair).toContain(getResponse('how do you get your hair like that?'));
+  });
+
+  it('falls back to the default pool for unmatched input', () => {
+    expect(responses.default).toContain(getResponse('quantum chromodynamics'));
+  });
+});
+
+describe('response pools', () => {
+  it('has non-empty arrays for every category', () => {
+    for (const [key, pool] of Object.entries(responses)) {
+      expect(pool.length, `pool "${key}"`).toBeGreaterThan(0);
+      for (const line of pool) expect(typeof line).toBe('string');
+    }
+  });
+
+  it('exposes a non-empty typing phrase list', () => {
+    expect(typingPhrases.length).toBeGreaterThan(0);
+  });
+});
+
+describe('chat histories', () => {
+  it('has a non-empty conversation for each sidebar history id', () => {
+    const ids = ['impress', 'hairgel', 'lasagna', 'gymlines', 'mirrors', 'posing', 'rhymes'];
+    for (const id of ids) {
+      expect(chatHistories[id].length, `history "${id}"`).toBeGreaterThan(0);
+      for (const msg of chatHistories[id]) {
+        expect(['user', 'ai']).toContain(msg.sender);
+        expect(typeof msg.text).toBe('string');
+      }
+    }
+  });
+});
+
+describe('avatar', () => {
+  it('exports the Johnny Bravo SVG markup', () => {
+    expect(johnnySVG).toContain('<svg viewBox="0 0 100 120"');
+    expect(johnnySVG).toContain('</svg>');
+  });
+});

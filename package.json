@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/martin-juul/bravochat#readme",
   "devDependencies": {
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
   }
 }
