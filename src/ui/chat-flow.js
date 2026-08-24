@@ -1,5 +1,5 @@
 // Chat orchestration: sending, history loading, new chat, and the session-token race guard.
-import { getResponse } from '../domain/responses.js';
+import { composeResponse, resetConversation } from '../domain/responses.js';
 import { chatHistories } from '../domain/histories.js';
 import {
   currentSessionToken,
@@ -37,6 +37,7 @@ export function loadChatHistory(historyId) {
   setIsResponding(false);
   hideTyping();
   incrementSessionToken(); // Invalidate any pending live chat responses
+  resetConversation();
 
   setCurrentChatId(historyId);
   setActiveHistoryItem(historyId);
@@ -55,6 +56,8 @@ export function startNewChat() {
   incrementSessionToken(); // Invalidate pending responses
   setIsResponding(false);
   hideTyping();
+  resetConversation();
+  lastUserText = '';
   showWelcome();
   setActiveHistoryItem(null);
   newChatBtn.classList.add('pulse');
@@ -62,6 +65,9 @@ export function startNewChat() {
   inputEl.focus();
   closeMobileSidebar();
 }
+
+/** @type {string} text of the most recent user message, for regeneration */
+let lastUserText = '';
 
 /**
  * Send the current input as a user message and schedule the mock AI reply.
@@ -85,6 +91,7 @@ export function sendMessage() {
   spawnSparkles(rect.left + rect.width / 2, rect.top + rect.height / 2);
 
   addMessage(text, 'user');
+  lastUserText = text;
   inputEl.value = '';
   inputEl.style.height = 'auto';
   sendBtn.disabled = true;
@@ -100,9 +107,38 @@ export function sendMessage() {
     if (currentSession !== currentSessionToken()) return;
 
     hideTyping();
-    const response = getResponse(text);
-    addMessage(response, 'ai');
+    const response = composeResponse(text);
+    addMessage(response, 'ai', { regenerable: true });
     setIsResponding(false);
+    inputEl.focus();
+  }, delay);
+}
+
+/**
+ * Regenerate the last AI response: remove it and re-answer the last user message.
+ * No-op when a response is pending or there is nothing to regenerate.
+ */
+export function regenerateResponse() {
+  if (getIsResponding() || !lastUserText) return;
+
+  // Remove the last AI message (the one carrying the regenerate button)
+  const last = /** @type {HTMLElement} */ (messagesEl.querySelector('.message.ai:last-of-type'));
+  if (last) last.remove();
+
+  setIsResponding(true);
+  showTyping();
+
+  const currentSession = currentSessionToken();
+  const delay = 800 + Math.random() * 800;
+
+  setTimeout(() => {
+    if (currentSession !== currentSessionToken()) return;
+
+    hideTyping();
+    const response = composeResponse(lastUserText);
+    addMessage(response, 'ai', { regenerable: true });
+    setIsResponding(false);
+    inputEl.focus();
   }, delay);
 }
 

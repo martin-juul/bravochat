@@ -84,26 +84,49 @@ export function createMessageElement(text, sender) {
  * Append a message bubble, replacing the welcome screen if present.
  * @param {string} text
  * @param {'user' | 'ai'} sender
+ * @param {{ regenerable?: boolean }} [opts] when true (AI only), attach a
+ *   regenerate control to this message and remove it from any older one.
  */
-export function addMessage(text, sender) {
+export function addMessage(text, sender, opts = {}) {
   if (getWelcomeShown()) {
     messagesEl.replaceChildren();
     setWelcomeShown(false);
   }
 
   const msg = createMessageElement(text, sender);
+
+  if (sender === 'ai' && opts.regenerable) {
+    const stale = messagesEl.querySelector('.regenerate-btn');
+    if (stale) stale.remove();
+
+    const btn = document.createElement('button');
+    btn.className = 'regenerate-btn';
+    btn.type = 'button';
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.5 15a9 9 0 1 0 2-9.4L1 10"/></svg>
+      Nah, let me try that again, sugar
+    `;
+    msg.querySelector('.message-content').appendChild(btn);
+  }
+
   messagesEl.appendChild(msg);
   scrollToBottom();
 }
 
-/** Append the typing indicator with a random phrase. */
+/** @type {ReturnType<typeof setInterval> | null} phrase rotation for the typing indicator */
+let typingInterval = null;
+/** @type {number} current index into `typingPhrases` for smooth progression */
+let typingIndex = 0;
+
+/** Append the typing indicator and cycle its status phrase every 2s. */
 export function showTyping() {
   if (getWelcomeShown()) {
     messagesEl.replaceChildren();
     setWelcomeShown(false);
   }
 
-  const phrase = typingPhrases[Math.floor(Math.random() * typingPhrases.length)];
+  hideTyping(); // never stack indicators
+  typingIndex = (typingIndex + 1) % typingPhrases.length;
 
   const msg = document.createElement('div');
   msg.className = 'message ai';
@@ -113,7 +136,7 @@ export function showTyping() {
     <div class="message-content">
       <div class="message-name ai">Johnny Bravo <span class="name-badge">AI</span></div>
       <div class="typing-bubble">
-        <span class="typing-text">${phrase}</span>
+        <span class="typing-text">${typingPhrases[typingIndex]}</span>
         <div class="typing-dots">
           <span class="typing-dot"></span>
           <span class="typing-dot"></span>
@@ -125,10 +148,21 @@ export function showTyping() {
 
   messagesEl.appendChild(msg);
   scrollToBottom();
+
+  typingInterval = setInterval(() => {
+    const textEl = msg.querySelector('.typing-text');
+    if (!textEl) return; // indicator was removed; interval cleaned up in hideTyping
+    typingIndex = (typingIndex + 1) % typingPhrases.length;
+    textEl.textContent = typingPhrases[typingIndex];
+  }, 2000);
 }
 
-/** Remove the typing indicator if present. */
+/** Remove the typing indicator if present, stopping phrase rotation. */
 export function hideTyping() {
+  if (typingInterval !== null) {
+    clearInterval(typingInterval);
+    typingInterval = null;
+  }
   const typing = document.getElementById('typing-message');
   if (typing) typing.remove();
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { getResponse, responses, typingPhrases } from './responses.js';
+import { getResponse, responses, typingPhrases, composeResponse, extractMention, resetConversation, escalationTails } from './responses.js';
 import { chatHistories } from './histories.js';
 import { johnnySVG } from '../assets/avatar.js';
 
@@ -40,6 +40,38 @@ describe('getResponse routing', () => {
 
   it('falls back to the default pool for unmatched input', () => {
     expect(responses.default).toContain(getResponse('quantum chromodynamics'));
+  });
+});
+
+describe('conversation memory', () => {
+  it('extracts notable keywords and skips stop words', () => {
+    expect(extractMention('Tell me about the quantum toaster')).toBe('toaster');
+    expect(extractMention('What do you know about johnny bravo')).toBe('bravo'); // 'johnny' is a stop word, 'bravo' follows
+    expect(extractMention('the and you what')).toBeNull();
+  });
+
+  it('never repeats a pool line until the pool is exhausted', () => {
+    resetConversation();
+    const seen = new Set(responses.hello);
+    const total = responses.hello.length;
+    for (let i = 0; i < total; i++) {
+      const line = getResponse('hello');
+      expect(seen).toContain(line);
+      seen.delete(line);
+    }
+    expect(seen.size).toBe(0);
+  });
+
+  it('composeResponse includes a pool line and escalates arrogance over time', () => {
+    resetConversation();
+    // First response: plain pool line, no escalation
+    const first = composeResponse('quantum chromodynamics');
+    expect(responses.default.some((line) => first.includes(line))).toBe(true);
+    // After 5+ responses the escalation tail appears
+    for (let i = 0; i < 5; i++) composeResponse('quantum chromodynamics');
+    const later = composeResponse('quantum chromodynamics');
+    expect(escalationTails.some((tail) => later.endsWith(tail))).toBe(true);
+    resetConversation();
   });
 });
 

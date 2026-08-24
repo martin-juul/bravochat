@@ -659,6 +659,40 @@ body {
     font-style: italic;
 }
 
+.regenerate-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 800;
+    font-family: 'Nunito', sans-serif;
+    color: var(--black);
+    background: var(--yellow);
+    border: 2px solid var(--black);
+    border-radius: 10px;
+    box-shadow: 0 3px 0 var(--black);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.regenerate-btn svg {
+    width: 12px;
+    height: 12px;
+}
+
+.regenerate-btn:hover {
+    background: var(--yellow-bright);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 0 var(--black);
+}
+
+.regenerate-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 var(--black);
+}
+
 .typing-dots {
     display: flex;
     gap: 5px;

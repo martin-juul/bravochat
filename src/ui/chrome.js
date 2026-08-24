@@ -17,7 +17,8 @@ import {
   autoResize,
 } from './dom.js';
 import { showWelcome } from './messages.js';
-import { sendMessage, startNewChat, loadChatHistory, handleChipClick } from './chat-flow.js';
+import { sendMessage, startNewChat, loadChatHistory, handleChipClick, regenerateResponse } from './chat-flow.js';
+import { spawnSparkles } from './background.js';
 
 /** Open the mobile sidebar overlay. */
 function toggleSidebar() {
@@ -35,12 +36,25 @@ function hideInfo() {
   modalBackdrop.classList.remove('show');
 }
 
+/** Timestamp of the last sparkle easter-egg burst, for throttling. */
+let lastSparkleAt = 0;
+
+/** Johnny's trigger words — typing one earns a sparkle burst at the input. */
+const sparkleTriggers = /\b(handsome|mama|hair)\b/i;
+
 /** Wire all event listeners (input, buttons, delegation) and show the welcome screen. */
 export function initApp() {
   // ============ EVENT LISTENERS ============
   inputEl.addEventListener('input', () => {
     autoResize();
     sendBtn.disabled = inputEl.value.trim() === '' || getIsResponding();
+
+    // Sparkle easter egg: trigger word in the input, throttled to 1.5s
+    if (sparkleTriggers.test(inputEl.value) && Date.now() - lastSparkleAt > 1500) {
+      lastSparkleAt = Date.now();
+      const rect = inputEl.getBoundingClientRect();
+      spawnSparkles(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    }
   });
 
   inputEl.addEventListener('keydown', (e) => {
@@ -62,6 +76,20 @@ export function initApp() {
   hamburger.addEventListener('click', toggleSidebar);
   overlay.addEventListener('click', toggleSidebar);
 
+  // Keyboard polish: Escape closes modal/sidebar, '/' focuses the input
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      hideInfo();
+      if (sidebar.classList.contains('open')) toggleSidebar();
+    } else if (e.key === '/' && document.activeElement !== inputEl) {
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      if (tag !== 'input' && tag !== 'textarea') {
+        e.preventDefault();
+        inputEl.focus();
+      }
+    }
+  });
+
   // Event Delegation for history items
   document.getElementById('chat-history').addEventListener('click', (e) => {
     const item = e.target.closest('.history-item');
@@ -70,8 +98,14 @@ export function initApp() {
     }
   });
 
-  // Event Delegation for suggestion chips
+  // Event Delegation for suggestion chips and the regenerate button
   messagesEl.addEventListener('click', handleChipClick);
+  messagesEl.addEventListener('click', (e) => {
+    if (e.target.closest('.regenerate-btn')) {
+      e.stopPropagation();
+      regenerateResponse();
+    }
+  });
 
   // ============ INIT ============
   showWelcome();

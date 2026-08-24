@@ -98,27 +98,135 @@ export const typingPhrases = [
 ];
 
 /**
- * Route user text to a response by keyword matching.
+ * Route user text to a response by keyword matching, never repeating a line
+ * within the same conversation (until its pool is exhausted, then it resets).
  * @param {string} userText - the raw user message.
  * @returns {string} a random in-character response from the matched pool.
  */
 export function getResponse(userText) {
   const lower = userText.toLowerCase();
   let pool = responses.default;
+  let poolKey = 'default';
 
   if (/\b(hi|hello|hey|yo|sup|howdy|greetings)\b/.test(lower) && lower.length < 20) {
     pool = responses.hello;
+    poolKey = 'hello';
   } else if (/\b(date|dating|girl|girls|lady|ladies|love|kiss|romance|crush|girlfriend|boyfriend|relationship)\b/.test(lower)) {
     pool = responses.date;
+    poolKey = 'date';
   } else if (/\b(mama|mom|mother|mommy)\b/.test(lower)) {
     pool = responses.mama;
+    poolKey = 'mama';
   } else if (/\b(muscle|muscles|gym|strong|workout|lift|bicep|biceps|flex|fitness|ripped|buff)\b/.test(lower)) {
     pool = responses.muscle;
+    poolKey = 'muscle';
   } else if (/\b(hair|pompadour|style|hairstyle|hairspray|gel)\b/.test(lower)) {
     pool = responses.hair;
+    poolKey = 'hair';
   } else if (/\b(joke|funny|laugh|humor|haha)\b/.test(lower)) {
     pool = responses.default;
   }
 
-  return pool[Math.floor(Math.random() * pool.length)];
+  return pickUnseen(pool, poolKey);
+}
+
+// ============ CONVERSATION MEMORY (pure module state) ============
+
+/** @type {Map<string, Set<number>>} pool key -> indices already served this conversation */
+const seenIndices = new Map();
+/** @type {number} how many responses Johnny has given this conversation */
+let arroganceLevel = 0;
+
+/** Reset per-conversation state: no-repeat memory and arrogance level. */
+export function resetConversation() {
+  seenIndices.clear();
+  arroganceLevel = 0;
+}
+
+/**
+ * Pick a random pool entry, avoiding repeats until the pool is exhausted.
+ * @param {string[]} pool
+ * @param {string} poolKey
+ * @returns {string}
+ */
+function pickUnseen(pool, poolKey) {
+  let seen = seenIndices.get(poolKey);
+  if (!seen) {
+    seen = new Set();
+    seenIndices.set(poolKey, seen);
+  }
+  if (seen.size >= pool.length) seen.clear(); // pool exhausted — start over
+
+  let index;
+  do {
+    index = Math.floor(Math.random() * pool.length);
+  } while (seen.has(index));
+  seen.add(index);
+  return pool[index];
+}
+
+// ============ MENTION DETECTION ============
+
+/** Words Johnny refuses to get excited about. */
+const stopWords = new Set([
+  'the', 'and', 'you', 'your', 'yours', 'what', 'with', 'about', 'that', 'this',
+  'just', 'like', 'have', 'has', 'does', 'would', 'could', 'should', 'tell',
+  'when', 'where', 'from', 'they', 'them', 'been', 'want', 'know', 'some',
+  'make', 'more', 'other', 'such', 'only', 'also', 'there', 'here', 'were',
+  'will', 'them', 'then', 'than', 'very', 'much', 'many', 'over', 'into',
+  'please', 'thanks', 'thank', 'hello', 'hey',
+]);
+
+/**
+ * Extract the most mention-worthy word from user text.
+ * @param {string} userText
+ * @returns {string | null} a lowercase keyword, or null if nothing notable
+ */
+export function extractMention(userText) {
+  const words = userText.toLowerCase().match(/[a-z']{4,}/g) || [];
+  const notable = words.filter((w) => !stopWords.has(w));
+  return notable.length > 0 ? notable[notable.length - 1] : null;
+}
+
+/** Templates for echoing the user's word back at them. `{word}` is replaced. */
+const mentionTemplates = [
+  '"{word}", huh? Funny — that\'s my second-favorite word. The first is "handsome". ',
+  'Oh, you said "{word}"! Mama says I hang on every word. Especially the ones I can make about me. ',
+  'Did you just say "{word}"? Say it again, slower. It sounds better when I pretend it\'s a compliment. ',
+  '"{word}", she said! I don\'t know what it means, sugar, but I LIKE the way you say it. ',
+];
+
+/** Escalating arrogance tails, appended as the conversation drags on. */
+export const escalationTails = [
+  ' And that\'s me being HUMBLE, toots.',
+  ' By the way — I\'m even MORE handsome than I was three answers ago. It\'s a growth curve.',
+  ' Frankly, sugar, you\'re getting the deluxe Johnny at this point. Most people tap out by now. You\'re welcome.',
+  ' Mama says I should let other people talk. Mama clearly hasn\'t met me.',
+  ' I\'ve decided this conversation is now about me. It always was, but now it\'s OFFICIAL.',
+];
+
+/**
+ * Full composed response: routed pool line, prefixed with a mention echo when
+ * the user said something notable, and suffixed with escalating arrogance as
+ * the conversation grows. Also bumps the arrogance level.
+ * @param {string} userText
+ * @returns {string}
+ */
+export function composeResponse(userText) {
+  const base = getResponse(userText);
+  let out = base;
+
+  const mention = extractMention(userText);
+  if (mention && arroganceLevel > 0 && Math.random() < 0.5) {
+    const template = mentionTemplates[Math.floor(Math.random() * mentionTemplates.length)];
+    out = template.replace('{word}', mention) + out;
+  }
+
+  if (arroganceLevel >= 3) {
+    const tailIndex = Math.min(arroganceLevel - 3, escalationTails.length - 1);
+    out += escalationTails[tailIndex];
+  }
+
+  arroganceLevel++;
+  return out;
 }
