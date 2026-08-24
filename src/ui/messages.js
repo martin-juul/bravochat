@@ -4,6 +4,7 @@ import { typingPhrases } from '../domain/responses.js';
 import { getWelcomeShown, setWelcomeShown } from '../domain/state.js';
 import { messagesEl, chatArea, scrollToBottom } from './dom.js';
 
+/** Renders the welcome screen with suggestion chips and clears chat state. */
 export function showWelcome() {
   setWelcomeShown(true);
   messagesEl.classList.remove('switching');
@@ -35,12 +36,19 @@ export function showWelcome() {
   `;
 }
 
+/** @param {string | null} id data-id of the history item to highlight, or null to clear */
 export function setActiveHistoryItem(id) {
   document.querySelectorAll('.history-item').forEach(item => {
     item.classList.toggle('active', item.dataset.id === id);
   });
 }
 
+/**
+ * Build a chat message element (avatar, name, bubble) for a sender.
+ * @param {string} text message body
+ * @param {'user' | 'ai'} sender
+ * @returns {HTMLDivElement}
+ */
 export function createMessageElement(text, sender) {
   const msg = document.createElement('div');
   msg.className = `message ${sender}`;
@@ -72,6 +80,11 @@ export function createMessageElement(text, sender) {
   return msg;
 }
 
+/**
+ * Append a message bubble, replacing the welcome screen if present.
+ * @param {string} text
+ * @param {'user' | 'ai'} sender
+ */
 export function addMessage(text, sender) {
   if (getWelcomeShown()) {
     messagesEl.replaceChildren();
@@ -83,6 +96,7 @@ export function addMessage(text, sender) {
   scrollToBottom();
 }
 
+/** Append the typing indicator with a random phrase. */
 export function showTyping() {
   if (getWelcomeShown()) {
     messagesEl.replaceChildren();
@@ -113,12 +127,16 @@ export function showTyping() {
   scrollToBottom();
 }
 
+/** Remove the typing indicator if present. */
 export function hideTyping() {
   const typing = document.getElementById('typing-message');
   if (typing) typing.remove();
 }
 
-// Loads a pre-baked conversation into the chat area with a batched fragment append.
+/**
+ * Render a pre-baked conversation with a batched fragment append.
+ * @param {import('../domain/histories.js').HistoryMessage[]} conversation
+ */
 export function renderConversation(conversation) {
   setWelcomeShown(false);
   messagesEl.replaceChildren(); // High performance clear

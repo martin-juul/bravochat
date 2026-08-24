@@ -24,6 +24,10 @@ import {
 } from './dom.js';
 import { showWelcome, setActiveHistoryItem, addMessage, showTyping, hideTyping, renderConversation } from './messages.js';
 
+/**
+ * Load a pre-baked history into the chat surface, guarding against session races.
+ * @param {string} historyId key into `chatHistories` (matches sidebar data-id)
+ */
 export function loadChatHistory(historyId) {
   const conversation = chatHistories[historyId];
   if (!conversation) return;
@@ -46,6 +50,7 @@ export function loadChatHistory(historyId) {
   }, 220);
 }
 
+/** Reset to the welcome screen, invalidating any pending responses. */
 export function startNewChat() {
   incrementSessionToken(); // Invalidate pending responses
   setIsResponding(false);
@@ -58,6 +63,10 @@ export function startNewChat() {
   closeMobileSidebar();
 }
 
+/**
+ * Send the current input as a user message and schedule the mock AI reply.
+ * No-op when the input is empty or a response is already pending.
+ */
 export function sendMessage() {
   const text = inputEl.value.trim();
   if (!text || getIsResponding()) return;
@@ -97,7 +106,10 @@ export function sendMessage() {
   }, delay);
 }
 
-// Suggestion-chip clicks fill the input and send, like typing the text yourself.
+/**
+ * Suggestion-chip click handler: fill the input and send.
+ * @param {MouseEvent} e
+ */
 export function handleChipClick(e) {
   const chip = e.target.closest('.chip');
   if (chip && chip.dataset.text) {

@@ -1,4 +1,13 @@
-// Pre-baked sidebar chat histories, keyed by history-item data-id.
+/**
+ * @typedef {Object} HistoryMessage
+ * @property {'user' | 'ai'} sender
+ * @property {string} text
+ */
+
+/**
+ * Pre-baked sidebar chat histories, keyed by history-item data-id.
+ * @type {Record<string, HistoryMessage[]>}
+ */
 export const chatHistories = {
   impress: [
     {sender: 'user', text: 'How do I impress the ladies, Johnny?'},

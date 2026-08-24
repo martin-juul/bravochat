@@ -1,4 +1,6 @@
-// App chrome: sidebar, overlay, info modal, and all event-listener wiring (initApp).
+/**
+ * @file App chrome: sidebar, overlay, info modal, and all event-listener wiring (initApp).
+ */
 import { getIsResponding } from '../domain/state.js';
 import {
   inputEl,
@@ -17,19 +19,23 @@ import {
 import { showWelcome } from './messages.js';
 import { sendMessage, startNewChat, loadChatHistory, handleChipClick } from './chat-flow.js';
 
+/** Open the mobile sidebar overlay. */
 function toggleSidebar() {
   sidebar.classList.toggle('open');
   overlay.classList.toggle('show');
 }
 
+/** Show the info modal. */
 function showInfo() {
   modalBackdrop.classList.add('show');
 }
 
+/** Hide the info modal. */
 function hideInfo() {
   modalBackdrop.classList.remove('show');
 }
 
+/** Wire all event listeners (input, buttons, delegation) and show the welcome screen. */
 export function initApp() {
   // ============ EVENT LISTENERS ============
   inputEl.addEventListener('input', () => {

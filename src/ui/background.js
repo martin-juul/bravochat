@@ -1,9 +1,35 @@
-// Canvas background system: atomic pattern, floating shapes, sparkle particles.
-// Single rAF loop with delta-time normalization; devicePixelRatio-aware.
-// ============ CANVAS BACKGROUND SYSTEM ============
-const bgCanvas = document.getElementById('bg-canvas');
+/**
+ * @typedef {Object} FloatingShape
+ * @property {number} x normalized horizontal position (0–1)
+ * @property {number} y normalized vertical position (0–1)
+ * @property {'star5' | 'star4' | 'ring_dot' | 'circle'} type
+ * @property {string} [color]
+ * @property {string} [color1]
+ * @property {string} [color2]
+ * @property {number} size diameter in px
+ * @property {number} phase bob-cycle offset in seconds
+ */
 
-// Wire resize handling and start the single animation loop.
+/**
+ * @typedef {Object} Sparkle
+ * @property {number} x
+ * @property {number} y
+ * @property {number} vx
+ * @property {number} vy
+ * @property {number} life 1 → 0, particle dies at 0
+ * @property {string} color
+ * @property {number} rotation
+ * @property {number} rotSpeed
+ * @property {number} size
+ */
+
+/**
+ * Canvas background system: atomic pattern, floating shapes, sparkle particles.
+ * Single rAF loop with delta-time normalization; devicePixelRatio-aware.
+ */
+const bgCanvas = /** @type {HTMLCanvasElement} */ (document.getElementById('bg-canvas'));
+
+/** Wire resize handling and start the single animation loop. */
 export function initBackground() {
   window.addEventListener('resize', resizeBgCanvas);
   resizeBgCanvas();
@@ -25,6 +51,7 @@ function resizeBgCanvas() {
   bgCtx.scale(dpr, dpr);
 }
 
+/** @type {FloatingShape[]} */
 const bgShapes = [
   {x: 0.08, y: 0.12, type: 'star5', color: 'rgba(255, 61, 127, 0.4)', size: 40, phase: 0},
   {
@@ -41,8 +68,18 @@ const bgShapes = [
   {x: 0.05, y: 0.45, type: 'star4', color: 'rgba(46, 196, 182, 0.4)', size: 30, phase: -12},
 ];
 
+/** @type {Sparkle[]} */
 const sparkles = [];
 
+/**
+ * Draw an N-pointed star path (no fill/stroke).
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} cx center x
+ * @param {number} cy center y
+ * @param {number} spikes number of points
+ * @param {number} outer outer radius
+ * @param {number} inner inner radius
+ */
 function drawStar(ctx, cx, cy, spikes, outer, inner) {
   let rot = Math.PI / 2 * 3;
   let x = cx, y = cy;
@@ -63,6 +100,11 @@ function drawStar(ctx, cx, cy, spikes, outer, inner) {
   ctx.closePath();
 }
 
+/**
+ * Emit an 8-particle sparkle burst centered on (x, y) — called on message send.
+ * @param {number} x viewport x
+ * @param {number} y viewport y
+ */
 export function spawnSparkles(x, y) {
   const colors = ['#FFD93D', '#FF3D7F', '#2EC4B6', '#FFE54C'];
   for (let i = 0; i < 8; i++) {
@@ -84,6 +126,10 @@ export function spawnSparkles(x, y) {
 let bgTime = 0;
 let lastTime = performance.now();
 
+/**
+ * Single animation frame: clear, then draw pattern, floating shapes, sparkles.
+ * @param {DOMHighResTimeStamp} now
+ */
 function animateBg(now) {
   const dt = Math.min((now - lastTime) / 16.666, 3); // Delta time, capped to avoid jumps
   lastTime = now;

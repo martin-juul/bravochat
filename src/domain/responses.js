@@ -1,4 +1,11 @@
-// Rule-based response engine: keyword pools + routing (pure, DOM-free).
+/**
+ * @file Rule-based response engine: keyword pools + routing (pure, DOM-free).
+ */
+
+/**
+ * Response pools keyed by category. `default` is the fallback pool.
+ * @type {Record<string, string[]>}
+ */
 export const responses = {
   default: [
     'Oh, mama! Did you just ask ME a question? Well buckle up, sugar, \'cause the answer is gonna be smoother than my hair after a fresh can of hairspray! *flexes* The answer is... YES. Always yes. Unless you\'re asking if I\'ve ever been turned down. Then the answer is also yes, but we don\'t talk about those times. *sniff*',
@@ -73,6 +80,10 @@ export const responses = {
   ],
 };
 
+/**
+ * Phrases shown in the typing indicator while a response is pending.
+ * @type {string[]}
+ */
 export const typingPhrases = [
   'Johnny is flexing his brain',
   'Johnny is checking his hair',
@@ -86,6 +97,11 @@ export const typingPhrases = [
   'Johnny is kissing his bicep',
 ];
 
+/**
+ * Route user text to a response by keyword matching.
+ * @param {string} userText - the raw user message.
+ * @returns {string} a random in-character response from the matched pool.
+ */
 export function getResponse(userText) {
   const lower = userText.toLowerCase();
   let pool = responses.default;

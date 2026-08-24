@@ -1,4 +1,4 @@
-// Canonical Johnny Bravo SVG (viewBox 0 0 100 120) — injected by the UI modules.
+/** Canonical Johnny Bravo SVG (viewBox 0 0 100 120) — injected by the UI modules. @type {string} */
 export const johnnySVG = `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
   <!-- Face -->
   <path d="M 28 40 Q 28 75 50 82 Q 72 75 72 40 Z" fill="#FFE0B2" stroke="#1A1A1A" stroke-width="3" stroke-linejoin="round"/>
