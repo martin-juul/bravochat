@@ -136,7 +136,6 @@ export function createChatStore(storage: ChatStorage, now: () => number = () => 
     return [...chats].sort((a, b) => b.updatedAt - a.updatedAt);
   }
 
-/** @param id */
   function getChat(id: string): StoredChat | undefined {
     return chats.find((c) => c.id === id);
   }

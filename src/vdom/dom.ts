@@ -18,15 +18,14 @@ export function createEl(vnode: VNode): Node {
     return span;
   }
 
-  const tag = (vnode as VElement).tag;
+  const tag = vnode.tag;
   const isSvg = tag === 'svg' || tag === 'path' || tag === 'rect';
   const el = isSvg
     ? document.createElementNS('http://www.w3.org/2000/svg', tag)
     : document.createElement(tag);
 
-  const ve = vnode as VElement;
-  applyProps(el, diffProps({}, ve.props));
-  for (const child of ve.children) el.appendChild(createEl(child));
+  applyProps(el, diffProps({}, vnode.props));
+  for (const child of vnode.children) el.appendChild(createEl(child));
   return el;
 }
 
@@ -89,10 +88,14 @@ export function patchEl(dom: Node, oldVNode: VNode | null, newVNode: VNode): Nod
   }
 
   const el = dom as Element;
-  const oldEl = oldVNode as VElement;
-  const newEl = newVNode as VElement;
-  applyProps(el, diffProps(oldEl.props, newEl.props));
-  patchChildren(el, oldEl.children, newEl.children);
+  if (oldVNode.type !== 'element') {
+    // sameKind guaranteed both are elements here; belt-and-braces rebuild otherwise
+    const fresh = createEl(newVNode);
+    dom.parentNode?.replaceChild(fresh, dom);
+    return fresh;
+  }
+  applyProps(el, diffProps(oldVNode.props, newVNode.props));
+  patchChildren(el, oldVNode.children, newVNode.children);
   return el;
 }
 

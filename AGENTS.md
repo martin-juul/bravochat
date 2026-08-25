@@ -13,7 +13,7 @@ The project is designed to be lightweight, performant, and frameworkless (vanill
 - **Rendering:** HTML5 Canvas (for background/particle effects), DOM manipulation (for UI).
 - **Fonts:** Google Fonts (`Bowlby One SC` for display, `Nunito` for body text).
 - **Commands:** `npm run dev` (dev server), `npm run build` (production build), `npm run preview` (serve the built output), `npm test` (Vitest unit), `npm run test:e2e` (Playwright e2e, auto-builds and serves preview).
-- **No UI frameworks, no additional dependencies** beyond Vite and Vitest.
+- **No UI frameworks, no additional dependencies** beyond Vite, Vitest/Playwright, TypeScript, and @types/node.
 
 ## File Structure
 

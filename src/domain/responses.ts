@@ -150,7 +150,6 @@ export function exportConversationState(): ConversationMemory {
   return { seen, arrogance: arroganceLevel };
 }
 
-/**
 /** Serialized per-conversation no-repeat memory. */
 export interface ConversationMemory {
   seen: Record<string, number[]>;
