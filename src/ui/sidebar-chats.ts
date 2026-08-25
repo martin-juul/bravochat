@@ -1,17 +1,16 @@
 // Persisted-chats sidebar section: vdom-rendered, keyed, below the pre-baked
 // fake histories. Plain labels, Johnny garnish on hover (R3, R6).
-import { h } from '../vdom/core.js';
-import { patchChildren, ownContainer } from '../vdom/dom.js';
-
-/** @typedef {import('../domain/chat-store.js').StoredChat} StoredChat */
+import { h, type VElement, type VRaw } from '../vdom/core';
+import { patchChildren, ownContainer } from '../vdom/dom';
+import type { StoredChat } from '../domain/chat-store';
 
 /**
  * Render the persisted-chats list into its container.
- * @param {HTMLElement} container the #saved-chats element
- * @param {StoredChat[]} chats newest-first from the store
- * @param {string | null} activeId the currently open persisted chat id, if any
+ * @param container the #saved-chats element
+ * @param chats newest-first from the store
+ * @param activeId the currently open persisted chat id, if any
  */
-export function renderSavedChats(container, chats, activeId) {
+export function renderSavedChats(container: HTMLElement, chats: StoredChat[], activeId: string | null): void {
   ownContainer(container);
   const next = chats.length
     ? [
@@ -32,11 +31,11 @@ export function renderSavedChats(container, chats, activeId) {
   savedByContainer.set(container, next);
 }
 
-/** @type {WeakMap<HTMLElement, import('../vdom/core.js').VElement['children']>} */
-const savedByContainer = new WeakMap();
+/** the last rendered children per container, for keyed patching */
+const savedByContainer = new WeakMap<HTMLElement, VElement['children']>();
 
 /** The chat bubble icon (mirrors the fake history items'). */
-function chatIcon() {
+function chatIcon(): VRaw {
   return {
     type: 'raw',
     html: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',

@@ -1,45 +1,50 @@
-/**
- * @typedef {Object} FloatingShape
- * @property {number} x normalized horizontal position (0–1)
- * @property {number} y normalized vertical position (0–1)
- * @property {'star5' | 'star4' | 'ring_dot' | 'circle'} type
- * @property {string} [color]
- * @property {string} [color1]
- * @property {string} [color2]
- * @property {number} size diameter in px
- * @property {number} phase bob-cycle offset in seconds
- */
+/** A floating background shape. */
+interface FloatingShape {
+  /** normalized horizontal position (0–1) */
+  x: number;
+  /** normalized vertical position (0–1) */
+  y: number;
+  type: 'star5' | 'star4' | 'ring_dot' | 'circle';
+  color?: string;
+  color1?: string;
+  color2?: string;
+  /** diameter in px */
+  size: number;
+  /** bob-cycle offset in seconds */
+  phase: number;
+}
 
-/**
- * @typedef {Object} Sparkle
- * @property {number} x
- * @property {number} y
- * @property {number} vx
- * @property {number} vy
- * @property {number} life 1 → 0, particle dies at 0
- * @property {string} color
- * @property {number} rotation
- * @property {number} rotSpeed
- * @property {number} size
- */
+/** A sparkle particle. */
+interface Sparkle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  /** 1 → 0, particle dies at 0 */
+  life: number;
+  color: string;
+  rotation: number;
+  rotSpeed: number;
+  size: number;
+}
 
 /**
  * Canvas background system: atomic pattern, floating shapes, sparkle particles.
  * Single rAF loop with delta-time normalization; devicePixelRatio-aware.
  */
-const bgCanvas = /** @type {HTMLCanvasElement} */ (document.getElementById('bg-canvas'));
+const bgCanvas = document.getElementById('bg-canvas') as HTMLCanvasElement;
 
 /** Wire resize handling and start the single animation loop. */
-export function initBackground() {
+export function initBackground(): void {
   window.addEventListener('resize', resizeBgCanvas);
   resizeBgCanvas();
   requestAnimationFrame(animateBg);
 }
 
-const bgCtx = bgCanvas.getContext('2d');
-let W, H;
+const bgCtx = bgCanvas.getContext('2d') as CanvasRenderingContext2D;
+let W = 0, H = 0;
 
-function resizeBgCanvas() {
+function resizeBgCanvas(): void {
   const dpr = window.devicePixelRatio || 1;
   W = window.innerWidth;
   H = window.innerHeight;
@@ -51,8 +56,7 @@ function resizeBgCanvas() {
   bgCtx.scale(dpr, dpr);
 }
 
-/** @type {FloatingShape[]} */
-const bgShapes = [
+const bgShapes: FloatingShape[] = [
   {x: 0.08, y: 0.12, type: 'star5', color: 'rgba(255, 61, 127, 0.4)', size: 40, phase: 0},
   {
     x: 0.15,
@@ -68,19 +72,18 @@ const bgShapes = [
   {x: 0.05, y: 0.45, type: 'star4', color: 'rgba(46, 196, 182, 0.4)', size: 30, phase: -12},
 ];
 
-/** @type {Sparkle[]} */
-const sparkles = [];
+const sparkles: Sparkle[] = [];
 
 /**
  * Draw an N-pointed star path (no fill/stroke).
- * @param {CanvasRenderingContext2D} ctx
- * @param {number} cx center x
- * @param {number} cy center y
- * @param {number} spikes number of points
- * @param {number} outer outer radius
- * @param {number} inner inner radius
+ * @param ctx the 2D canvas context
+ * @param cx center x
+ * @param cy center y
+ * @param spikes number of points
+ * @param outer outer radius
+ * @param inner inner radius
  */
-function drawStar(ctx, cx, cy, spikes, outer, inner) {
+function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, spikes: number, outer: number, inner: number): void {
   let rot = Math.PI / 2 * 3;
   let x = cx, y = cy;
   const step = Math.PI / spikes;
@@ -102,10 +105,10 @@ function drawStar(ctx, cx, cy, spikes, outer, inner) {
 
 /**
  * Emit an 8-particle sparkle burst centered on (x, y) — called on message send.
- * @param {number} x viewport x
- * @param {number} y viewport y
+ * @param x viewport x
+ * @param y viewport y
  */
-export function spawnSparkles(x, y) {
+export function spawnSparkles(x: number, y: number): void {
   const colors = ['#FFD93D', '#FF3D7F', '#2EC4B6', '#FFE54C'];
   for (let i = 0; i < 8; i++) {
     const angle = (i / 8) * Math.PI * 2;
@@ -115,7 +118,7 @@ export function spawnSparkles(x, y) {
       vx: Math.cos(angle) * distance * 0.03,
       vy: Math.sin(angle) * distance * 0.03 - 1.5,
       life: 1,
-      color: colors[i % colors.length],
+      color: colors[i % colors.length] ?? '#FFD93D',
       rotation: Math.random() * Math.PI * 2,
       rotSpeed: (Math.random() - 0.5) * 0.2,
       size: 6 + Math.random() * 3,
@@ -128,9 +131,8 @@ let lastTime = performance.now();
 
 /**
  * Single animation frame: clear, then draw pattern, floating shapes, sparkles.
- * @param {DOMHighResTimeStamp} now
  */
-function animateBg(now) {
+function animateBg(now: DOMHighResTimeStamp): void {
   const dt = Math.min((now - lastTime) / 16.666, 3); // Delta time, capped to avoid jumps
   lastTime = now;
   bgTime += dt / 60; // Convert to seconds roughly
@@ -182,25 +184,25 @@ function animateBg(now) {
     bgCtx.rotate(rot);
 
     if (s.type === 'star5') {
-      bgCtx.fillStyle = s.color;
+      bgCtx.fillStyle = s.color ?? 'transparent';
       drawStar(bgCtx, 0, 0, 5, s.size / 2, s.size / 4);
       bgCtx.fill();
     } else if (s.type === 'star4') {
-      bgCtx.fillStyle = s.color;
+      bgCtx.fillStyle = s.color ?? 'transparent';
       drawStar(bgCtx, 0, 0, 4, s.size / 2, s.size / 4);
       bgCtx.fill();
     } else if (s.type === 'ring_dot') {
-      bgCtx.strokeStyle = s.color1;
+      bgCtx.strokeStyle = s.color1 ?? 'transparent';
       bgCtx.lineWidth = 3;
       bgCtx.beginPath();
       bgCtx.arc(0, 0, s.size / 2, 0, Math.PI * 2);
       bgCtx.stroke();
-      bgCtx.fillStyle = s.color2;
+      bgCtx.fillStyle = s.color2 ?? 'transparent';
       bgCtx.beginPath();
       bgCtx.arc(0, 0, s.size / 4, 0, Math.PI * 2);
       bgCtx.fill();
     } else if (s.type === 'circle') {
-      bgCtx.strokeStyle = s.color;
+      bgCtx.strokeStyle = s.color ?? 'transparent';
       bgCtx.lineWidth = 2.5;
       bgCtx.beginPath();
       bgCtx.arc(0, 0, s.size / 2, 0, Math.PI * 2);
@@ -212,6 +214,7 @@ function animateBg(now) {
   // 3. Sparkles
   for (let i = sparkles.length - 1; i >= 0; i--) {
     const p = sparkles[i];
+    if (!p) continue;
     p.x += p.vx;
     p.y += p.vy;
     p.vy += 0.1; // Gravity
