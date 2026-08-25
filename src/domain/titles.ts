@@ -4,10 +4,13 @@
  * with a Johnny-flavored garnish for the hover text. No randomization (R5–R7).
  */
 
-import { extractMention } from './responses.js';
+import { extractMention } from './responses';
 
-/** Routing category regexes, mirroring getResponse()'s order in responses.js. */
-const categoryPatterns = [
+/** Title categories, mirroring `getResponse()`'s routing order. */
+type TitleCategory = 'date' | 'mama' | 'hair' | 'muscle' | 'hello';
+
+/** Routing category regexes, mirroring getResponse()'s order in responses.ts. */
+const categoryPatterns: [TitleCategory, RegExp][] = [
   ['date', /\b(date|dating|girl|girls|lady|ladies|love|kiss|romance|crush|girlfriend|boyfriend|relationship)\b/i],
   ['mama', /\b(mama|mom|mother|mommy)\b/i],
   ['hair', /\b(hair|pompadour|style|hairstyle|hairspray|gel)\b/i],
@@ -16,7 +19,7 @@ const categoryPatterns = [
 ];
 
 /** Plain visible labels per dominant category (R5). */
-const categoryLabels = {
+const categoryLabels: Record<TitleCategory, string> = {
   date: 'Dating advice',
   mama: 'Mama stories',
   hair: 'Hair care tips',
@@ -25,7 +28,7 @@ const categoryLabels = {
 };
 
 /** Johnny garnish per category, surfaced as the item's hover text (R6). */
-const categoryGarnishes = {
+const categoryGarnishes: Record<TitleCategory | 'default', string> = {
   date: '100% date-tested, sugar',
   mama: "Mama approved. Obviously. She's a saint",
   hair: 'Certified 47 minutes of spray',
@@ -39,12 +42,12 @@ const categoryGarnishes = {
  * Counts routing-category hits, dominant wins; ties break by first-seen
  * category for determinism. Falls back to a capitalized extracted mention,
  * then "Chat with Johnny". Deterministic for a given message list.
- * @param {{ text: string }[]} messages the conversation's messages
- * @returns {string} the visible title
+ * @param messages the conversation's messages
+ * @returns the visible title
  */
-export function deriveTitle(messages) {
-  const counts = new Map();
-  let firstSeen = [];
+export function deriveTitle(messages: { text: string }[]): string {
+  const counts = new Map<TitleCategory, number>();
+  let firstSeen: TitleCategory[] = [];
 
   for (const msg of messages) {
     const text = typeof msg === 'string' ? msg : msg.text;
@@ -58,10 +61,10 @@ export function deriveTitle(messages) {
     }
   }
 
-  let best = null;
+  let best: TitleCategory | null = null;
   let bestCount = 0;
   for (const category of firstSeen) {
-    const count = counts.get(category);
+    const count = counts.get(category) ?? 0;
     if (count > bestCount) {
       best = category;
       bestCount = count;
@@ -70,7 +73,7 @@ export function deriveTitle(messages) {
 
   if (best) return categoryLabels[best];
 
-  const firstUser = messages.map((m) => (typeof m === 'string' ? m : m.text)).find(Boolean) || '';
+  const firstUser = messages.map((m) => (typeof m === 'string' ? m : m.text)).find(Boolean) ?? '';
   const mention = extractMention(firstUser);
   if (mention) return mention.charAt(0).toUpperCase() + mention.slice(1);
 
@@ -79,10 +82,9 @@ export function deriveTitle(messages) {
 
 /**
  * The Johnny garnish for a conversation's hover text (R6).
- * @param {{ text: string }[]} messages
- * @returns {string} garnish appended to the plain title in the title attribute
+ * @returns garnish appended to the plain title in the title attribute
  */
-export function garnishFor(messages) {
+export function garnishFor(messages: { text: string }[]): string {
   let garnish = categoryGarnishes.default;
   for (const msg of messages) {
     const text = typeof msg === 'string' ? msg : msg.text;

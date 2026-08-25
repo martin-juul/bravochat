@@ -1,14 +1,13 @@
-/**
- * @typedef {Object} HistoryMessage
- * @property {'user' | 'ai'} sender
- * @property {string} text
- */
+/** One message in a conversation: user or AI. */
+export interface HistoryMessage {
+  sender: 'user' | 'ai';
+  text: string;
+}
 
 /**
  * Pre-baked sidebar chat histories, keyed by history-item data-id.
- * @type {Record<string, HistoryMessage[]>}
  */
-export const chatHistories = {
+export const chatHistories: Record<string, HistoryMessage[]> = {
   impress: [
     {sender: 'user', text: 'How do I impress the ladies, Johnny?'},
     {

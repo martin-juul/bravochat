@@ -1,16 +1,17 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { responses } from './responses.js';
+import { responses, type ConversationMemory } from './responses';
+import type { EngineEvent } from './engine';
 
 // Recapture a fresh module per test so singleton state never leaks (KTD5 +
 // module-singleton engine; vi.resetModules with dynamic imports).
 async function freshEngine() {
   vi.resetModules();
-  return import('./engine.js');
+  return import('./engine');
 }
 
 function collector() {
-  const events = [];
-  return { events, listener: (e) => events.push(e) };
+  const events: EngineEvent[] = [];
+  return { events, listener: (e: EngineEvent) => events.push(e) };
 }
 
 beforeEach(() => {
@@ -24,16 +25,16 @@ describe('send', () => {
     engine.subscribe(listener);
 
     engine.send('tell me a joke');
-    expect(events.map((e) => e.type)).toEqual(['typing-started']);
+    expect(events.map((e: EngineEvent) => e.type)).toEqual(['typing-started']);
     expect(engine.getIsResponding()).toBe(true);
 
     // Randomized delay 1000–2500ms: advancing past the max must fire exactly once.
     vi.advanceTimersByTime(2500);
-    const ready = events.find((e) => e.type === 'response-ready');
+    const ready = events.find((e): e is Extract<EngineEvent, { type: 'response-ready' }> => e.type === 'response-ready');
     expect(ready).toBeDefined();
-    expect(typeof ready.text).toBe('string');
-    expect(ready.text.length).toBeGreaterThan(0);
-    expect(ready.regenerable).toBe(true);
+    expect(typeof ready?.text).toBe('string');
+    expect(ready?.text.length).toBeGreaterThan(0);
+    expect(ready?.regenerable).toBe(true);
     expect(engine.getIsResponding()).toBe(false);
   });
 
@@ -43,9 +44,9 @@ describe('send', () => {
     engine.subscribe(listener);
     engine.send('hello');
     vi.advanceTimersByTime(2500);
-    const ready = events.find((e) => e.type === 'response-ready');
+    const ready = events.find((e): e is Extract<EngineEvent, { type: 'response-ready' }> => e.type === 'response-ready');
     const allPools = Object.values(responses).flat();
-    expect(allPools.some((line) => ready.text.includes(line))).toBe(true);
+    expect(allPools.some((line) => ready?.text.includes(line))).toBe(true);
   });
 
   it('is a no-op with empty text', async () => {
@@ -169,10 +170,10 @@ describe('loadHistory', () => {
     const { events, listener } = collector();
     engine.subscribe(listener);
     engine.loadHistory('hairgel');
-    const loaded = events.find((e) => e.type === 'history-loaded');
+    const loaded = events.find((e): e is Extract<EngineEvent, { type: 'history-loaded' }> => e.type === 'history-loaded');
     expect(loaded).toBeDefined();
-    expect(Array.isArray(loaded.conversation)).toBe(true);
-    expect(loaded.historyId).toBe('hairgel');
+    expect(Array.isArray(loaded?.conversation)).toBe(true);
+    expect(loaded?.historyId).toBe('hairgel');
     expect(engine.getCurrentChatId()).toBe('hairgel');
   });
 
@@ -221,14 +222,14 @@ describe('resumeChat', () => {
     const { events, listener } = collector();
     engine.subscribe(listener);
     const conversation = [
-      { text: 'tell me about your hair', sender: 'user' },
-      { text: 'My HAIR?!', sender: 'ai' },
-      { text: 'yes', sender: 'user' },
-      { text: 'Forty-seven minutes', sender: 'ai' },
+      { text: 'tell me about your hair', sender: 'user' as const },
+      { text: 'My HAIR?!', sender: 'ai' as const },
+      { text: 'yes', sender: 'user' as const },
+      { text: 'Forty-seven minutes', sender: 'ai' as const },
     ];
     engine.resumeChat({ id: 'p:x1', conversation });
-    const loaded = events.find((e) => e.type === 'history-loaded');
-    expect(loaded.conversation).toHaveLength(4);
+    const loaded = events.find((e): e is Extract<EngineEvent, { type: 'history-loaded' }> => e.type === 'history-loaded');
+    expect(loaded?.conversation).toHaveLength(4);
     expect(engine.getCurrentChatId()).toBe('p:x1');
     expect(engine.isResumedChat()).toBe(true);
     expect(events.some((e) => e.type === 'session-invalidated')).toBe(true);
@@ -237,8 +238,8 @@ describe('resumeChat', () => {
   it('seeds regenerate from the last user message of the resumed conversation', async () => {
     const engine = await freshEngine();
     engine.resumeChat({ id: 'p:x1', conversation: [
-      { text: 'workout routine', sender: 'user' },
-      { text: 'MUSCLES?!', sender: 'ai' },
+      { text: 'workout routine', sender: 'user' as const },
+      { text: 'MUSCLES?!', sender: 'ai' as const },
     ] });
     expect(engine.getLastUserText()).toBe('workout routine');
     const { events, listener } = collector();
@@ -251,8 +252,8 @@ describe('resumeChat', () => {
   it('send after resume keeps the chat id (no duplicate chat, R9)', async () => {
     const engine = await freshEngine();
     engine.resumeChat({ id: 'p:x1', conversation: [
-      { text: 'hi', sender: 'user' },
-      { text: 'Hey sugar', sender: 'ai' },
+      { text: 'hi', sender: 'user' as const },
+      { text: 'Hey sugar', sender: 'ai' as const },
     ] });
     engine.send('more talk');
     expect(engine.getCurrentChatId()).toBe('p:x1');
@@ -264,21 +265,21 @@ describe('resumeChat', () => {
     // pickUnseen must reset the pool rather than repeat a served line.
     const seen = { hello: responses.hello.map((_, i) => i) };
     engine.resumeChat({ id: 'p:x1', memory: { seen, arrogance: 4 }, conversation: [
-      { text: 'hello', sender: 'user' },
-      { text: 'x', sender: 'ai' },
+      { text: 'hello', sender: 'user' as const },
+      { text: 'x', sender: 'ai' as const },
     ] });
     const { events, listener } = collector();
     engine.subscribe(listener);
     engine.send('hello');
     vi.advanceTimersByTime(2500);
-    const ready = events.find((e) => e.type === 'response-ready');
-    expect(typeof ready.text).toBe('string');
-    expect(ready.text.length).toBeGreaterThan(0);
+    const ready = events.find((e): e is Extract<EngineEvent, { type: 'response-ready' }> => e.type === 'response-ready');
+    expect(typeof ready?.text).toBe('string');
+    expect(ready?.text.length).toBeGreaterThan(0);
   });
 
   it('startNewChat after resume clears the resumed state (R10)', async () => {
     const engine = await freshEngine();
-    engine.resumeChat({ id: 'p:x1', conversation: [{ text: 'hi', sender: 'user' }] });
+    engine.resumeChat({ id: 'p:x1', conversation: [{ text: 'hi', sender: 'user' as const }] });
     engine.startNewChat();
     expect(engine.isResumedChat()).toBe(false);
     expect(engine.getCurrentChatId()).toBeNull();
@@ -290,8 +291,9 @@ describe('resumeChat', () => {
     const engine = await freshEngine();
     const { events, listener } = collector();
     engine.subscribe(listener);
-    engine.resumeChat(null);
-    engine.resumeChat({ conversation: 'nope' });
+    // Runtime guards mirror the old duck-typed checks; cast exercises them (AE2-style).
+    engine.resumeChat(null as unknown as never);
+    engine.resumeChat({ conversation: 'nope' } as unknown as never);
     expect(events).toEqual([]);
   });
 });

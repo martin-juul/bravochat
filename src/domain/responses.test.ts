@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { getResponse, responses, typingPhrases, composeResponse, extractMention, resetConversation, escalationTails } from './responses.js';
-import { chatHistories } from './histories.js';
-import { johnnySVG } from '../assets/avatar.js';
+import { getResponse, responses, typingPhrases, composeResponse, extractMention, resetConversation, escalationTails } from './responses';
+import { chatHistories } from './histories';
+import { johnnySVG } from '../assets/avatar';
 
 // The sidebar history ids in index.html are the contract's other side.
 const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
-const sidebarIds = [...new Set([...html.matchAll(/data-id="([^"]+)"/g)].map((m) => m[1]))];
+const sidebarIds = [...new Set([...html.matchAll(/data-id="([^"]+)"/g)].map((m) => m[1] ?? ''))].filter(Boolean);
 
 // assert the drawn response is a member of the given pool
 
@@ -92,8 +92,9 @@ describe('chat histories', () => {
   it('has a non-empty conversation for each sidebar history id', () => {
     expect(Object.keys(chatHistories).sort()).toEqual([...sidebarIds].sort());
     for (const id of sidebarIds) {
-      expect(chatHistories[id].length, `history "${id}"`).toBeGreaterThan(0);
-      for (const msg of chatHistories[id]) {
+      const history = chatHistories[id] ?? [];
+      expect(history.length, `history "${id}"`).toBeGreaterThan(0);
+      for (const msg of history) {
         expect(['user', 'ai']).toContain(msg.sender);
         expect(typeof msg.text).toBe('string');
       }
