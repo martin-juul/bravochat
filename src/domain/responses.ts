@@ -173,8 +173,8 @@ export function restoreConversationState(snapshot: ConversationMemory | undefine
 
 /**
  * Pick a random pool entry, avoiding repeats until the pool is exhausted.
- * @param {string[]} pool
- * @param {string} poolKey
+ * @param pool
+ * @param poolKey
  * @returns {string}
  */
 function pickUnseen(pool: string[], poolKey: ResponseCategory): string {
