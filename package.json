@@ -7,7 +7,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.dom.json"
   },
   "engines": {
     "node": ">=20"
@@ -21,13 +22,15 @@
     "email": "martin@juul.xyz"
   },
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/martin-juul/bravochat/issues"
   },
   "homepage": "https://github.com/martin-juul/bravochat#readme",
   "devDependencies": {
     "@playwright/test": "^1.62.1",
+    "@types/node": "^26.3.0",
+    "typescript": "^7.0.2",
     "vite": "^8.2.2",
     "vitest": "^4.1.11"
   }
