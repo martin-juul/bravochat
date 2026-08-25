@@ -139,7 +139,7 @@ export function patchChildren(parent: Element, oldChildren: VElement['children']
  */
 export function ownContainer(container: HTMLElement): void {
   for (const node of Array.from(container.childNodes)) {
-    if ((node.nodeType === Node.TEXT_NODE && !node.textContent.trim()) || node.nodeType === Node.COMMENT_NODE) {
+    if ((node.nodeType === Node.TEXT_NODE && !(node.textContent ?? '').trim()) || node.nodeType === Node.COMMENT_NODE) {
       node.remove();
     }
   }
