@@ -93,7 +93,7 @@ test('new chat resets to the welcome screen', async ({ page }) => {
   await page.locator('#message-input').fill('tell me a joke');
   await page.locator('#message-input').press('Enter');
   await expect(page.locator('.message.user')).toHaveCount(1);
-  await expect(page.locator('.message')).toHaveCount(1, { timeout: 300 }); // AI bubble not yet — response pending
+  await expect(page.locator('#typing-message')).toBeVisible(); // AI bubble not yet — response pending
 });
 
 test('history items load pre-baked conversations', async ({ page }) => {

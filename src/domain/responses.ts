@@ -2,11 +2,11 @@
  * @file Rule-based response engine: keyword pools + routing (pure, DOM-free).
  */
 
-/**
- * Response pools keyed by category. `default` is the fallback pool.
- * @type {Record<string, string[]>}
- */
-export const responses = {
+/** Response pool categories, mirroring `getResponse` routing. */
+export type ResponseCategory = 'default' | 'date' | 'mama' | 'muscle' | 'hair' | 'hello';
+
+/** Response pools keyed by category. `default` is the fallback pool. */
+export const responses: Record<ResponseCategory, string[]> = {
   default: [
     'Oh, mama! Did you just ask ME a question? Well buckle up, sugar, \'cause the answer is gonna be smoother than my hair after a fresh can of hairspray! *flexes* The answer is... YES. Always yes. Unless you\'re asking if I\'ve ever been turned down. Then the answer is also yes, but we don\'t talk about those times. *sniff*',
     'Hey there, sweet cheeks! I\'d love to answer that, but my calendar\'s booked solid with being handsome. Tomorrow? Also booked. Next week? Lookin\' pretty booked. Try never. *winks and adjusts collar*',
@@ -80,11 +80,8 @@ export const responses = {
   ],
 };
 
-/**
- * Phrases shown in the typing indicator while a response is pending.
- * @type {string[]}
- */
-export const typingPhrases = [
+/** Phrases shown in the typing indicator while a response is pending. */
+export const typingPhrases: string[] = [
   'Johnny is flexing his brain',
   'Johnny is checking his hair',
   'Johnny is asking mama',
@@ -98,32 +95,42 @@ export const typingPhrases = [
 ];
 
 /**
+ * Canonical routing patterns per category, in routing order. `hello` is
+ * length-gated in `getResponse`; title derivation uses the ungated pattern.
+ * Titles and routing share this table so keyword edits stay in lockstep.
+ */
+export const routingPatterns: ReadonlyArray<readonly [Exclude<ResponseCategory, 'default'>, RegExp]> = [
+  ['hello', /\b(hi|hello|hey|yo|sup|howdy|greetings)\b/],
+  ['date', /\b(date|dating|girl|girls|lady|ladies|love|kiss|romance|crush|girlfriend|boyfriend|relationship)\b/],
+  ['mama', /\b(mama|mom|mother|mommy)\b/],
+  ['muscle', /\b(muscle|muscles|gym|strong|workout|lift|bicep|biceps|flex|fitness|ripped|buff)\b/],
+  ['hair', /\b(hair|pompadour|style|hairstyle|hairspray|gel)\b/],
+];
+
+/** Jokes intentionally fall back to the default pool. */
+const jokePattern = /\b(joke|funny|laugh|humor|haha)\b/;
+
+/**
  * Route user text to a response by keyword matching, never repeating a line
  * within the same conversation (until its pool is exhausted, then it resets).
- * @param {string} userText - the raw user message.
- * @returns {string} a random in-character response from the matched pool.
+ * @param userText - the raw user message.
+ * @returns a random in-character response from the matched pool.
  */
-export function getResponse(userText) {
+export function getResponse(userText: string): string {
   const lower = userText.toLowerCase();
-  let pool = responses.default;
-  let poolKey = 'default';
+  let pool: string[] = responses.default;
+  let poolKey: ResponseCategory = 'default';
 
-  if (/\b(hi|hello|hey|yo|sup|howdy|greetings)\b/.test(lower) && lower.length < 20) {
-    pool = responses.hello;
-    poolKey = 'hello';
-  } else if (/\b(date|dating|girl|girls|lady|ladies|love|kiss|romance|crush|girlfriend|boyfriend|relationship)\b/.test(lower)) {
-    pool = responses.date;
-    poolKey = 'date';
-  } else if (/\b(mama|mom|mother|mommy)\b/.test(lower)) {
-    pool = responses.mama;
-    poolKey = 'mama';
-  } else if (/\b(muscle|muscles|gym|strong|workout|lift|bicep|biceps|flex|fitness|ripped|buff)\b/.test(lower)) {
-    pool = responses.muscle;
-    poolKey = 'muscle';
-  } else if (/\b(hair|pompadour|style|hairstyle|hairspray|gel)\b/.test(lower)) {
-    pool = responses.hair;
-    poolKey = 'hair';
-  } else if (/\b(joke|funny|laugh|humor|haha)\b/.test(lower)) {
+  for (const [category, pattern] of routingPatterns) {
+    if (category === 'hello' && lower.length >= 20) continue; // greetings only when short
+    if (pattern.test(lower)) {
+      pool = responses[category];
+      poolKey = category;
+      break;
+    }
+  }
+  if (poolKey === 'default' && jokePattern.test(lower)) {
+    // jokes keep the default pool; explicit for readability
     pool = responses.default;
   }
 
@@ -132,13 +139,13 @@ export function getResponse(userText) {
 
 // ============ CONVERSATION MEMORY (pure module state) ============
 
-/** @type {Map<string, Set<number>>} pool key -> indices already served this conversation */
-const seenIndices = new Map();
-/** @type {number} how many responses Johnny has given this conversation */
+/** pool key -> indices already served this conversation */
+const seenIndices = new Map<string, Set<number>>();
+/** how many responses Johnny has given this conversation */
 let arroganceLevel = 0;
 
 /** Reset per-conversation state: no-repeat memory and arrogance level. */
-export function resetConversation() {
+export function resetConversation(): void {
   seenIndices.clear();
   arroganceLevel = 0;
 }
@@ -146,19 +153,24 @@ export function resetConversation() {
 /**
  * Serialize the per-conversation state (no-repeat memory + arrogance level)
  * so a persisted chat can resume with its history intact.
- * @returns {{ seen: Record<string, number[]>, arrogance: number }}
  */
-export function exportConversationState() {
-  const seen = {};
+export function exportConversationState(): ConversationMemory {
+  const seen: Record<string, number[]> = {};
   for (const [key, indices] of seenIndices) seen[key] = [...indices];
   return { seen, arrogance: arroganceLevel };
 }
 
+/** Serialized per-conversation no-repeat memory. */
+export interface ConversationMemory {
+  seen: Record<string, number[]>;
+  arrogance: number;
+}
+
 /**
  * Restore per-conversation state previously exported.
- * @param {{ seen: Record<string, number[]>, arrogance: number } | undefined} snapshot
+ * @param snapshot previously exported state, or undefined for a fresh start
  */
-export function restoreConversationState(snapshot) {
+export function restoreConversationState(snapshot: ConversationMemory | undefined): void {
   seenIndices.clear();
   arroganceLevel = 0;
   if (!snapshot) return;
@@ -170,11 +182,11 @@ export function restoreConversationState(snapshot) {
 
 /**
  * Pick a random pool entry, avoiding repeats until the pool is exhausted.
- * @param {string[]} pool
- * @param {string} poolKey
+ * @param pool
+ * @param poolKey
  * @returns {string}
  */
-function pickUnseen(pool, poolKey) {
+function pickUnseen(pool: string[], poolKey: ResponseCategory): string {
   let seen = seenIndices.get(poolKey);
   if (!seen) {
     seen = new Set();
@@ -182,12 +194,12 @@ function pickUnseen(pool, poolKey) {
   }
   if (seen.size >= pool.length) seen.clear(); // pool exhausted — start over
 
-  let index;
+  let index: number;
   do {
     index = Math.floor(Math.random() * pool.length);
   } while (seen.has(index));
   seen.add(index);
-  return pool[index];
+  return pool[index] ?? pool[pool.length - 1] ?? '';
 }
 
 // ============ MENTION DETECTION ============
@@ -204,17 +216,16 @@ const stopWords = new Set([
 
 /**
  * Extract the most mention-worthy word from user text.
- * @param {string} userText
- * @returns {string | null} a lowercase keyword, or null if nothing notable
+ * @returns a lowercase keyword, or null if nothing notable
  */
-export function extractMention(userText) {
+export function extractMention(userText: string): string | null {
   const words = userText.toLowerCase().match(/[a-z']{4,}/g) || [];
   const notable = words.filter((w) => !stopWords.has(w));
-  return notable.length > 0 ? notable[notable.length - 1] : null;
+  return notable.length > 0 ? (notable.at(-1) ?? null) : null;
 }
 
 /** Templates for echoing the user's word back at them. `{word}` is replaced. */
-const mentionTemplates = [
+const mentionTemplates: string[] = [
   '"{word}", huh? Funny — that\'s my second-favorite word. The first is "handsome". ',
   'Oh, you said "{word}"! Mama says I hang on every word. Especially the ones I can make about me. ',
   'Did you just say "{word}"? Say it again, slower. It sounds better when I pretend it\'s a compliment. ',
@@ -234,22 +245,20 @@ export const escalationTails = [
  * Full composed response: routed pool line, prefixed with a mention echo when
  * the user said something notable, and suffixed with escalating arrogance as
  * the conversation grows. Also bumps the arrogance level.
- * @param {string} userText
- * @returns {string}
  */
-export function composeResponse(userText) {
-  const base = getResponse(userText);
+export function composeResponse(userText: string): string {
+  const base: string = getResponse(userText);
   let out = base;
 
   const mention = extractMention(userText);
   if (mention && arroganceLevel > 0 && Math.random() < 0.5) {
-    const template = mentionTemplates[Math.floor(Math.random() * mentionTemplates.length)];
+    const template = mentionTemplates[Math.floor(Math.random() * mentionTemplates.length)] ?? '';
     out = template.replace('{word}', mention) + out;
   }
 
   if (arroganceLevel >= 3) {
     const tailIndex = Math.min(arroganceLevel - 3, escalationTails.length - 1);
-    out += escalationTails[tailIndex];
+    out += escalationTails[tailIndex] ?? '';
   }
 
   arroganceLevel++;

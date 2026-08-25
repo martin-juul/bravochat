@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { h, diffChildren, diffProps, sameKind } from './core.js';
+import { h, diffChildren, diffProps, sameKind, type PatchOp, type VText, type VNode } from './core';
+
+const text = (t: string): VText => ({ type: 'text', text: t });
 
 describe('h()', () => {
   it('builds element vnodes, dropping holes', () => {
@@ -8,8 +10,9 @@ describe('h()', () => {
     expect(v.tag).toBe('ul');
     expect(v.key).toBe('list');
     expect(v.children).toHaveLength(2);
-    expect(v.children[1].type).toBe('text');
-    expect(v.children[1].text).toBe('tail');
+    const tail = v.children[1];
+    expect(tail?.type).toBe('text');
+    expect((tail as VText | undefined)?.text).toBe('tail');
   });
 
   it('coerces primitive children to text nodes', () => {
@@ -22,7 +25,7 @@ describe('sameKind', () => {
   it('matches same-tag elements and rejects tag changes', () => {
     expect(sameKind(h('div'), h('div'))).toBe(true);
     expect(sameKind(h('div'), h('span'))).toBe(false);
-    expect(sameKind({ type: 'text', text: 'a' }, { type: 'text', text: 'b' })).toBe(true);
+    expect(sameKind(text('a'), text('b'))).toBe(true);
     expect(sameKind(null, h('div'))).toBe(false);
   });
 });
@@ -36,7 +39,7 @@ describe('diffProps', () => {
 });
 
 describe('diffChildren (keyed)', () => {
-  const keys = (ops) => ops.filter((o) => o.key != null).map((o) => `${o.op}:${o.key}`);
+  const keys = (ops: PatchOp[]) => ops.filter((o) => o.key != null).map((o) => `${o.op}:${o.key}`);
 
   it('append: one insert, everything else reused', () => {
     const oldC = [h('li', { key: 'a' }), h('li', { key: 'b' })];
@@ -73,8 +76,8 @@ describe('diffChildren (keyed)', () => {
   });
 
   it('unkeyed text children patch by position', () => {
-    const oldC = [{ type: 'text', text: 'hello' }, { type: 'text', text: 'world' }];
-    const newC = [{ type: 'text', text: 'hello' }, { type: 'text', text: 'sugar' }];
+    const oldC: VNode[] = [text('hello'), text('world')];
+    const newC: VNode[] = [text('hello'), text('sugar')];
     const ops = diffChildren(oldC, newC);
     expect(ops.filter((o) => o.op === 'update')).toHaveLength(2);
     expect(ops.filter((o) => o.op !== 'update')).toHaveLength(0);
@@ -82,7 +85,7 @@ describe('diffChildren (keyed)', () => {
 });
 
 describe('benchmark: op counts stay minimal at chat scale', () => {
-  const message = (i) => h('div', { key: `msg-${i}`, class: 'message' }, [
+  const message = (i: number) => h('div', { key: `msg-${i}`, class: 'message' }, [
     h('div', { class: 'avatar' }, ['U']),
     h('div', { class: 'content' }, [h('div', { class: 'name' }, [`You ${i}`]), h('div', { class: 'bubble' }, [`text ${i}`])]),
   ]);

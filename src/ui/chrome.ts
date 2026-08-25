@@ -1,7 +1,7 @@
 /**
  * @file App chrome: sidebar, overlay, info modal, and all event-listener wiring (initApp).
  */
-import { getIsResponding } from '../domain/engine.js';
+import { getIsResponding } from '../domain/engine';
 import {
   inputEl,
   sendBtn,
@@ -15,25 +15,25 @@ import {
   modalClose,
   messagesEl,
   autoResize,
-} from './dom.js';
-import { showWelcome } from './messages.js';
-import { sendMessage, startNewChat, loadChatHistory, handleChipClick, regenerateResponse, initChatFlow } from './chat-flow.js';
-import { createChatStore } from '../domain/chat-store.js';
-import { spawnSparkles } from './background.js';
+} from './dom';
+import { showWelcome } from './messages';
+import { sendMessage, startNewChat, loadChatHistory, handleChipClick, regenerateResponse, initChatFlow } from './chat-flow';
+import { createChatStore, type ChatStorage } from '../domain/chat-store';
+import { spawnSparkles } from './background';
 
 /** Open the mobile sidebar overlay. */
-function toggleSidebar() {
+function toggleSidebar(): void {
   sidebar.classList.toggle('open');
   overlay.classList.toggle('show');
 }
 
 /** Show the info modal. */
-function showInfo() {
+function showInfo(): void {
   modalBackdrop.classList.add('show');
 }
 
 /** Hide the info modal. */
-function hideInfo() {
+function hideInfo(): void {
   modalBackdrop.classList.remove('show');
 }
 
@@ -44,7 +44,7 @@ let lastSparkleAt = 0;
 const sparkleTriggers = /\b(handsome|mama|hair)\b/i;
 
 /** Wire all event listeners (input, buttons, delegation) and show the welcome screen. */
-export function initApp() {
+export function initApp(): void {
   // ============ EVENT LISTENERS ============
   inputEl.addEventListener('input', () => {
     autoResize();
@@ -92,19 +92,19 @@ export function initApp() {
   });
 
   // Event Delegation for history items (pre-baked fakes + persisted real chats)
-  const onHistoryClick = (e) => {
-    const item = e.target.closest('.history-item');
-    if (item && item.dataset.id) {
+  const onHistoryClick = (e: MouseEvent) => {
+    const item = (e.target as HTMLElement | null)?.closest<HTMLElement>('.history-item');
+    if (item?.dataset.id) {
       loadChatHistory(item.dataset.id);
     }
   };
-  document.getElementById('chat-history').addEventListener('click', onHistoryClick);
-  document.getElementById('saved-chats').addEventListener('click', onHistoryClick);
+  document.getElementById('chat-history')?.addEventListener('click', onHistoryClick);
+  document.getElementById('saved-chats')?.addEventListener('click', onHistoryClick);
 
   // Event Delegation for suggestion chips and the regenerate button
   messagesEl.addEventListener('click', handleChipClick);
   messagesEl.addEventListener('click', (e) => {
-    if (e.target.closest('.regenerate-btn')) {
+    if ((e.target as HTMLElement | null)?.closest('.regenerate-btn')) {
       e.stopPropagation();
       regenerateResponse();
     }
@@ -116,7 +116,7 @@ export function initApp() {
 }
 
 /** localStorage adapter for the chat store's storage seam (DOM access lives in ui/). */
-function localStorageAdapter() {
+function localStorageAdapter(): ChatStorage {
   return {
     getItem: (key) => window.localStorage.getItem(key),
     setItem: (key, value) => window.localStorage.setItem(key, value),

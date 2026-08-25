@@ -1,13 +1,19 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { createChatStore } from './chat-store.js';
-import { deriveTitle, garnishFor } from './titles.js';
+import { createChatStore, type ChatStore, type ChatStorage } from './chat-store';
+import { deriveTitle, garnishFor } from './titles';
+import type { StoredMessage } from './chat-store';
+
+/** Narrow a stored message list to the {text} shape title derivation reads. */
+const texts = (msgs: StoredMessage[]): { text: string }[] => msgs;
 
 /** Map-backed storage adapter standing in for localStorage (no browser needed). */
-function memStorage() {
-  const map = new Map();
+function memStorage(): ChatStorage & { _map: Map<string, string> } {
+  const map = new Map<string, string>();
   return {
-    getItem: (k) => (map.has(k) ? map.get(k) : null),
-    setItem: (k, v) => map.set(k, v),
+    getItem: (k) => (map.has(k) ? map.get(k) ?? null : null),
+    setItem: (k, v) => {
+      map.set(k, v);
+    },
     _map: map,
   };
 }
@@ -16,8 +22,8 @@ function memStorage() {
 let tick = 0;
 const clock = () => ++tick;
 
-let store;
-let storage;
+let store: ChatStore;
+let storage: ChatStorage & { _map: Map<string, string> };
 beforeEach(() => {
   tick = 0;
   storage = memStorage();
@@ -39,61 +45,61 @@ describe('threshold (R1, AE1)', () => {
     expect(store.listChats()).toHaveLength(1);
     store.recordMessage('p:a', 'ai', 'Forty-seven minutes, sugar');
     expect(store.listChats()).toHaveLength(1);
-    expect(store.getChat('p:a').messages).toHaveLength(4);
+    expect(store.getChat('p:a')?.messages).toHaveLength(4);
   });
 });
 
 describe('titles (R5–R7)', () => {
   it('derives a deterministic dominant-category title', () => {
     const msgs = [
-      { text: 'how do I fix my hair', sender: 'user' },
-      { text: 'Forty-seven minutes', sender: 'ai' },
-      { text: 'what about hairspray', sender: 'user' },
+      { text: 'how do I fix my hair', sender: 'user' as const },
+      { text: 'Forty-seven minutes', sender: 'ai' as const },
+      { text: 'what about hairspray', sender: 'user' as const },
     ];
-    expect(deriveTitle(msgs)).toBe('Hair care tips');
-    expect(deriveTitle(msgs)).toBe(deriveTitle(msgs)); // deterministic
+    expect(deriveTitle(texts(msgs))).toBe('Hair care tips');
+    expect(deriveTitle(texts(msgs))).toBe(deriveTitle(texts(msgs))); // deterministic
   });
 
   it('hair dominance beats a single date mention', () => {
     const msgs = [
-      { text: 'hair question', sender: 'user' },
-      { text: 'answer', sender: 'ai' },
-      { text: 'another hair thing', sender: 'user' },
-      { text: 'one dating mention', sender: 'user' },
+      { text: 'hair question', sender: 'user' as const },
+      { text: 'answer', sender: 'ai' as const },
+      { text: 'another hair thing', sender: 'user' as const },
+      { text: 'one dating mention', sender: 'user' as const },
     ];
-    expect(deriveTitle(msgs)).toBe('Hair care tips');
+    expect(deriveTitle(texts(msgs))).toBe('Hair care tips');
   });
 
   it('ties break by first-seen category deterministically', () => {
     const msgs = [
-      { text: 'gym day', sender: 'user' },
-      { text: 'x', sender: 'ai' },
-      { text: 'hair day', sender: 'user' },
+      { text: 'gym day', sender: 'user' as const },
+      { text: 'x', sender: 'ai' as const },
+      { text: 'hair day', sender: 'user' as const },
     ];
-    expect(deriveTitle(msgs)).toBe('Workout talk');
+    expect(deriveTitle(texts(msgs))).toBe('Workout talk');
   });
 
   it('falls back to a capitalized extracted mention', () => {
-    expect(deriveTitle([{ text: 'Tell me about the quantum toaster', sender: 'user' }])).toBe('Toaster');
+    expect(deriveTitle([{ text: 'Tell me about the quantum toaster' }])).toBe('Toaster');
   });
 
   it('falls back to "Chat with Johnny" when nothing notable', () => {
-    expect(deriveTitle([{ text: 'the and you what', sender: 'user' }])).toBe('Chat with Johnny');
+    expect(deriveTitle([{ text: 'the and you what' }])).toBe('Chat with Johnny');
   });
 
   it('garnish comes from the matched category', () => {
-    expect(garnishFor([{ text: 'workout routine', sender: 'user' }])).toBe('100% bicep-related');
-    expect(garnishFor([{ text: 'zzz nothing', sender: 'user' }])).toContain('Johnny');
+    expect(garnishFor([{ text: 'workout routine' }])).toBe('100% bicep-related');
+    expect(garnishFor([{ text: 'zzz nothing' }])).toContain('Johnny');
   });
 
   it('title assigned once and never changes on later drift (R7)', () => {
     store.recordMessage('p:a', 'user', 'hair hair');
     store.recordMessage('p:a', 'ai', 'ok');
     store.recordMessage('p:a', 'user', 'hair');
-    expect(store.getChat('p:a').title).toBe('Hair care tips');
+    expect(store.getChat('p:a')?.title).toBe('Hair care tips');
     store.recordMessage('p:a', 'user', 'muscles muscles gym');
     store.recordMessage('p:a', 'user', 'gym again');
-    expect(store.getChat('p:a').title).toBe('Hair care tips'); // unchanged
+    expect(store.getChat('p:a')?.title).toBe('Hair care tips'); // unchanged
   });
 });
 
@@ -131,8 +137,8 @@ describe('persistence', () => {
     const raw = storage.getItem('bravochat.savedChats');
     const store2 = createChatStore(memStorageWithValue(raw), clock);
     const loaded = store2.getChat('p:a');
-    expect(loaded.messages).toHaveLength(3);
-    expect(loaded.title).toBe('Hair care tips');
+    expect(loaded?.messages).toHaveLength(3);
+    expect(loaded?.title).toBe('Hair care tips');
   });
 
   it('degrades to empty on corrupt storage', () => {
@@ -141,7 +147,7 @@ describe('persistence', () => {
   });
 });
 
-function memStorageWithValue(raw) {
+function memStorageWithValue(raw: string | null): ChatStorage {
   const s = memStorage();
   if (raw != null) s.setItem('bravochat.savedChats', raw);
   return s;

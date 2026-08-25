@@ -1,6 +1,6 @@
 // Chat wiring: UI commands into the engine, engine events into rendering.
 // All orchestration (state, race guards, response scheduling) lives in
-// src/domain/engine.js; this module only renders presentation effects and
+// src/domain/engine.ts; this module only renders presentation effects and
 // feeds the persistence store as a passive subscriber (KTD5).
 import {
   send as engineSend,
@@ -14,10 +14,12 @@ import {
   getLastUserText,
   isResumedChat,
   hasHistory,
-} from '../domain/engine.js';
-import { exportConversationState } from '../domain/responses.js';
-import { spawnSparkles } from './background.js';
-import { messagesEl, inputEl, sendBtn, newChatBtn, closeMobileSidebar } from './dom.js';
+} from '../domain/engine';
+import { exportConversationState } from '../domain/responses';
+import type { ChatStore } from '../domain/chat-store';
+import type { EngineEvent, ResumableChat } from '../domain/engine';
+import { spawnSparkles } from './background';
+import { messagesEl, inputEl, sendBtn, newChatBtn, closeMobileSidebar } from './dom';
 import {
   addMessage,
   showWelcome,
@@ -26,31 +28,29 @@ import {
   renderConversation,
   setActiveHistoryItem,
   removeLastAiMessage,
-} from './messages.js';
-import { renderSavedChats } from './sidebar-chats.js';
+} from './messages';
+import { renderSavedChats } from './sidebar-chats';
 
-/** @type {import('../domain/chat-store.js').ReturnType<typeof import('../domain/chat-store.js').createChatStore> | null} */
-let store = null;
+let store: ChatStore | null = null;
 
-/** @type {HTMLElement | null} the #saved-chats container */
-let savedChatsEl = null;
+/** the #saved-chats container */
+let savedChatsEl: HTMLElement | null = null;
 
-/** @type {string | null} persisted-chat id for the live conversation, if any */
-let liveChatId = null;
+/** persisted-chat id for the live conversation, if any */
+let liveChatId: string | null = null;
 
 /** Refresh the saved-chats sidebar section from the store. */
-function refreshSavedChats() {
+function refreshSavedChats(): void {
   if (!store || !savedChatsEl) return;
   renderSavedChats(savedChatsEl, store.listChats(), isResumedChat() ? getCurrentChatId() : null);
 }
 
 /**
  * Initialize chat flow wiring with the persistence store.
- * @param {ReturnType<typeof import('../domain/chat-store.js').createChatStore>} chatStore
  */
-export function initChatFlow(chatStore) {
+export function initChatFlow(chatStore: ChatStore): void {
   store = chatStore;
-  savedChatsEl = /** @type {HTMLElement} */ (document.getElementById('saved-chats'));
+  savedChatsEl = document.getElementById('saved-chats');
   subscribe(handleEngineEvent);
   refreshSavedChats();
   setTimeout(() => inputEl.focus(), 300);
@@ -60,7 +60,7 @@ export function initChatFlow(chatStore) {
  * Send the current input: render the user bubble and sparkles around the
  * engine call (commands emit synchronously, so the bubble renders first).
  */
-export function sendMessage() {
+export function sendMessage(): void {
   const text = inputEl.value.trim();
   if (!text || getIsResponding()) return;
 
@@ -78,7 +78,7 @@ export function sendMessage() {
   // Persistence (R1): a resumed chat keeps its id; a fresh chat gets one on
   // its first send and keeps it for the conversation's lifetime.
   try {
-    if (!liveChatId) liveChatId = isResumedChat() ? getCurrentChatId() : store?.nextId() ?? null;
+    if (!liveChatId) liveChatId = isResumedChat() ? getCurrentChatId() : (store?.nextId() ?? null);
     if (liveChatId) store?.recordMessage(liveChatId, 'user', text);
   } catch (err) {
     console.error('[chat-store] recordMessage failed:', err);
@@ -92,7 +92,7 @@ export function sendMessage() {
  * engine to re-answer the last user message.
  * No-op when a response is pending or there is nothing to regenerate.
  */
-export function regenerateResponse() {
+export function regenerateResponse(): void {
   if (getIsResponding() || !getLastUserText()) return;
 
   removeLastAiMessage();
@@ -101,7 +101,7 @@ export function regenerateResponse() {
 }
 
 /** Reset to the welcome screen via the engine. */
-export function startNewChat() {
+export function startNewChat(): void {
   newChatBtn.classList.add('pulse');
   setTimeout(() => newChatBtn.classList.remove('pulse'), 500);
   liveChatId = null;
@@ -113,9 +113,8 @@ export function startNewChat() {
 /**
  * Load a chat from the sidebar: pre-baked fakes by data-id, persisted chats
  * by their `p:`-prefixed id (routed to engine.resumeChat, R8).
- * @param {string} chatId
  */
-export function loadChatHistory(chatId) {
+export function loadChatHistory(chatId: string): void {
   if (chatId.startsWith('p:')) {
     const chat = store?.getChat(chatId);
     if (!chat || getCurrentChatId() === chatId) return;
@@ -134,10 +133,9 @@ export function loadChatHistory(chatId) {
 
 /**
  * Suggestion-chip click handler: fill the input and send.
- * @param {MouseEvent} e
  */
-export function handleChipClick(e) {
-  const chip = e.target.closest('.chip');
+export function handleChipClick(e: MouseEvent): void {
+  const chip = (e.target as HTMLElement | null)?.closest<HTMLElement>('.chip');
   if (chip && chip.dataset.text) {
     inputEl.value = chip.dataset.text;
     inputEl.dispatchEvent(new Event('input'));
@@ -147,9 +145,8 @@ export function handleChipClick(e) {
 
 /**
  * Render engine events. Presentation only — no state decisions here.
- * @param {{ type: string, [key: string]: unknown }} event
  */
-function handleEngineEvent(event) {
+function handleEngineEvent(event: EngineEvent): void {
   switch (event.type) {
     case 'typing-started':
       showTyping();
@@ -157,8 +154,8 @@ function handleEngineEvent(event) {
 
     case 'response-ready':
       hideTyping();
-      addMessage(/** @type {string} */ (event.text), 'ai', { regenerable: event.regenerable === true });
-      if (liveChatId) store?.recordMessage(liveChatId, 'ai', /** @type {string} */ (event.text), exportConversationState());
+      addMessage(event.text, 'ai', { regenerable: event.regenerable === true });
+      if (liveChatId) store?.recordMessage(liveChatId, 'ai', event.text, exportConversationState());
       refreshSavedChats();
       sendBtn.disabled = inputEl.value.trim() === '';
       inputEl.focus();
@@ -179,11 +176,11 @@ function handleEngineEvent(event) {
       // Sidebar highlight updates immediately; the visual switch fade plays out
       // over 220ms (KTD4: the UI owns the presentation delay). The staleness
       // guard keeps a New Chat clicked during the window from being stomped.
-      const id = /** @type {string} */ (event.historyId);
+      const id = event.historyId ?? null;
       setActiveHistoryItem(id);
       setTimeout(() => {
         if (getCurrentChatId() !== id) return;
-        renderConversation(/** @type {import('../domain/histories.js').HistoryMessage[]} */ (event.conversation));
+        renderConversation(event.conversation);
         messagesEl.classList.remove('switching');
         refreshSavedChats(); // highlight the resumed chat as active
         closeMobileSidebar();

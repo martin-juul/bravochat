@@ -2,43 +2,49 @@
 // The message list is a plain data model; every mutation derives new vnodes
 // and patches the DOM via the Mini Bravo DOM vdom (keyed diff). Imperative
 // DOM access is limited to post-paint animation touches.
-import { johnnySVG } from '../assets/avatar.js';
-import { typingPhrases } from '../domain/responses.js';
-import { h } from '../vdom/core.js';
-import { patchChildren, ownContainer } from '../vdom/dom.js';
-import { messagesEl, chatArea } from './dom.js';
+import { johnnySVG } from '../assets/avatar';
+import { typingPhrases } from '../domain/responses';
+import type { HistoryMessage } from '../domain/histories';
+import { h, type VElement } from '../vdom/core';
+import { patchChildren, ownContainer } from '../vdom/dom';
+import { messagesEl, chatArea } from './dom';
 
 // The renderer fully owns #messages: strip formatting-only nodes (whitespace,
 // comments) so live child indices always match the vnode list.
 ownContainer(messagesEl);
 
-/** @typedef {{ id: string, text: string, sender: 'user' | 'ai', regenerable?: boolean }} Message */
+/** One rendered chat message in the UI data model. */
+export interface Message {
+  id: string;
+  text: string;
+  sender: 'user' | 'ai';
+  regenerable?: boolean;
+}
 
-/** @type {boolean} whether the welcome screen is currently rendered (UI-only state) */
+/** whether the welcome screen is currently rendered (UI-only state) */
 let welcomeShown = true;
 
-/** @type {Message[]} the message data model; vnodes derive from this */
-let messages = [];
+/** the message data model; vnodes derive from this */
+let messages: Message[] = [];
 
-/** @type {number} monotonic id source for messages */
+/** monotonic id source for messages */
 let idCounter = 0;
 
-/** @type {import('../vdom/core.js').VElement | null} the typing indicator vnode, when shown */
-let typingNode = null;
+/** the typing indicator vnode, when shown */
+let typingNode: VElement | null = null;
 
 /**
  * Patch #messages to a new vnode list (the single render entry point).
- * @param {import('../vdom/core.js').VElement['children']} next
  */
-function paint(next) {
+function paint(next: VElement['children']): void {
   patchChildren(messagesEl, rendered, next);
   rendered = next;
 }
 
 /** Derive the vnode list: welcome screen OR messages plus optional typing indicator. */
-function derive() {
+function derive(): VElement['children'] {
   if (welcomeShown) return [{ type: 'raw', html: welcomeHtml }];
-  const list = messages.map((m) => messageVNode(m));
+  const list: VElement['children'] = messages.map((m) => messageVNode(m));
   if (typingNode) list.push(typingNode);
   return list;
 }
@@ -69,11 +75,11 @@ const welcomeHtml = `
     </div>
   </div>`;
 
-/** @type {import('../vdom/core.js').VElement['children']} the currently rendered vnode list */
-let rendered = [];
+/** the currently rendered vnode list */
+let rendered: VElement['children'] = [];
 
 /** Renders the welcome screen. */
-export function showWelcome() {
+export function showWelcome(): void {
   welcomeShown = true;
   typingNode = null;
   messages = [];
@@ -82,19 +88,17 @@ export function showWelcome() {
   paint(derive());
 }
 
-/** @param {string | null} id data-id of the history item to highlight, or null to clear */
-export function setActiveHistoryItem(id) {
-  document.querySelectorAll('.history-item').forEach(item => {
+/** Highlight the history item with this data-id, or clear highlights when null. */
+export function setActiveHistoryItem(id: string | null): void {
+  document.querySelectorAll<HTMLElement>('.history-item').forEach((item) => {
     item.classList.toggle('active', item.dataset.id === id);
   });
 }
 
 /**
  * Build a chat-message vnode (avatar, name, bubble, optional regenerate control).
- * @param {Message} msg
- * @returns {import('../vdom/core.js').VElement}
  */
-export function messageVNode(msg) {
+export function messageVNode(msg: Message): VElement {
   const avatar = msg.sender === 'ai'
     ? h('div', { class: 'message-avatar ai', innerHTML: johnnySVG })
     : h('div', { class: 'message-avatar user' }, ['U']);
@@ -113,7 +117,7 @@ export function messageVNode(msg) {
 }
 
 /** The "Nah, let me try that again, sugar" control vnode. */
-function regenerateBtnVNode() {
+function regenerateBtnVNode(): VElement {
   return h('button', {
     class: 'regenerate-btn',
     type: 'button',
@@ -124,8 +128,8 @@ function regenerateBtnVNode() {
 }
 
 /** Post-paint avatar wiggle for the newest AI message. */
-function wiggleNewestAi() {
-  const avatar = /** @type {HTMLElement} */ (messagesEl.querySelector('.message.ai:last-of-type .message-avatar.ai'));
+function wiggleNewestAi(): void {
+  const avatar = messagesEl.querySelector<HTMLElement>('.message.ai:last-of-type .message-avatar.ai');
   if (!avatar) return;
   setTimeout(() => {
     avatar.classList.add('wiggle');
@@ -134,7 +138,7 @@ function wiggleNewestAi() {
 }
 
 /** Batched scroll-to-bottom on the next frame. */
-function scrollChat() {
+function scrollChat(): void {
   requestAnimationFrame(() => {
     chatArea.scrollTop = chatArea.scrollHeight;
   });
@@ -143,16 +147,15 @@ function scrollChat() {
 /**
  * Append a message via keyed patch. A new regenerable AI message steals the
  * regenerate control from the previous one (model-level, diff handles the DOM).
- * @param {string} text
- * @param {'user' | 'ai'} sender
- * @param {{ regenerable?: boolean }} [opts] when true (AI only), attach a regenerate control
+ * @param opts when `regenerable` is true (AI only), attach a regenerate control
  */
-export function addMessage(text, sender, opts = {}) {
+export function addMessage(text: string, sender: 'user' | 'ai', opts: { regenerable?: boolean } = {}): void {
   welcomeShown = false;
   if (sender === 'ai' && opts.regenerable) {
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].sender === 'ai') {
-        if (messages[i].regenerable) messages[i] = { ...messages[i], regenerable: false };
+      const m = messages[i];
+      if (m && m.sender === 'ai') {
+        if (m.regenerable) messages[i] = { ...m, regenerable: false };
         break;
       }
     }
@@ -166,9 +169,9 @@ export function addMessage(text, sender, opts = {}) {
 /**
  * Remove the last AI message (regenerate flow) via keyed patch.
  */
-export function removeLastAiMessage() {
+export function removeLastAiMessage(): void {
   for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].sender === 'ai') {
+    if (messages[i]?.sender === 'ai') {
       messages = messages.slice(0, i).concat(messages.slice(i + 1));
       paint(derive());
       return;
@@ -176,15 +179,15 @@ export function removeLastAiMessage() {
   }
 }
 
-/** @type {ReturnType<typeof setInterval> | null} phrase rotation for the typing indicator */
-let typingInterval = null;
-/** @type {number} current index into `typingPhrases` for smooth progression */
+/** phrase rotation for the typing indicator */
+let typingInterval: ReturnType<typeof setInterval> | null = null;
+/** current index into `typingPhrases` for smooth progression */
 let typingIndex = 0;
 
 /**
  * Show the typing indicator via keyed patch and cycle its phrase every 2s.
  */
-export function showTyping() {
+export function showTyping(): void {
   welcomeShown = false;
   hideTyping(); // never stack indicators
   typingIndex = (typingIndex + 1) % typingPhrases.length; // progress phrases between sessions
@@ -194,7 +197,7 @@ export function showTyping() {
     h('div', { class: 'message-content' }, [
       h('div', { class: 'message-name ai' }, ['Johnny Bravo ', h('span', { class: 'name-badge' }, ['AI'])]),
       h('div', { class: 'typing-bubble' }, [
-        h('span', { class: 'typing-text' }, [typingPhrases[typingIndex]]),
+        h('span', { class: 'typing-text' }, [typingPhrases[typingIndex] ?? '']),
         h('div', { class: 'typing-dots' }, [
           h('span', { class: 'typing-dot' }), h('span', { class: 'typing-dot' }), h('span', { class: 'typing-dot' }),
         ]),
@@ -208,12 +211,12 @@ export function showTyping() {
     const textEl = messagesEl.querySelector('.typing-text');
     if (!textEl) return; // indicator was removed; interval cleaned up in hideTyping
     typingIndex = (typingIndex + 1) % typingPhrases.length;
-    textEl.textContent = typingPhrases[typingIndex];
+    textEl.textContent = typingPhrases[typingIndex] ?? '';
   }, 2000);
 }
 
 /** Remove the typing indicator via keyed patch, stopping phrase rotation. */
-export function hideTyping() {
+export function hideTyping(): void {
   if (typingInterval !== null) {
     clearInterval(typingInterval);
     typingInterval = null;
@@ -226,13 +229,12 @@ export function hideTyping() {
 
 /**
  * Render a pre-baked conversation via keyed patch.
- * @param {import('../domain/histories.js').HistoryMessage[]} conversation
  */
-export function renderConversation(conversation) {
+export function renderConversation(conversation: HistoryMessage[]): void {
   welcomeShown = false;
   typingNode = null;
   idCounter = 0;
-  messages = conversation.map((msg, i) => ({ id: `h${i}`, text: msg.text, sender: msg.sender }));
+  messages = conversation.map((msg, i): Message => ({ id: `h${i}`, text: msg.text, sender: msg.sender }));
   paint(derive());
   wiggleNewestAi();
   scrollChat();

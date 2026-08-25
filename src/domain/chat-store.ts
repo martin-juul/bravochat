@@ -4,18 +4,46 @@
  * in ui/, a plain map in tests). DOM-free per the module boundary rule.
  */
 
-import { deriveTitle, garnishFor } from './titles.js';
+import { deriveTitle, garnishFor } from './titles';
+import type { ConversationMemory } from './responses';
+
+/** One stored message in a persisted chat. */
+export interface StoredMessage {
+  text: string;
+  sender: 'user' | 'ai';
+}
 
 /** A persisted chat record. */
-/**
- * @typedef {Object} StoredChat
- * @property {string} id unique, `p:`-prefixed
- * @property {string} title plain visible label (assigned once)
- * @property {string} garnish hover-text garnish (assigned once)
- * @property {{ text: string, sender: 'user' | 'ai' }[]} messages full conversation
- * @property {number} updatedAt recency marker for eviction ordering
- * @property {object} [memory] response-engine no-repeat snapshot (set by the UI layer on save)
- */
+export interface StoredChat {
+  /** unique, `p:`-prefixed */
+  id: string;
+  /** plain visible label (assigned once) */
+  title: string;
+  /** hover-text garnish (assigned once) */
+  garnish: string;
+  /** full conversation */
+  messages: StoredMessage[];
+  /** recency marker for eviction ordering */
+  updatedAt: number;
+  /** response-engine no-repeat snapshot (set by the UI layer on save) */
+  memory?: ConversationMemory;
+}
+
+/** Storage seam the store persists through (localStorage in the browser, a Map in tests). */
+export interface ChatStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
+
+/** The chat store API returned by `createChatStore`. */
+export interface ChatStore {
+  recordMessage(id: string, sender: 'user' | 'ai', text: string, memory?: ConversationMemory): void;
+  touch(id: string): void;
+  listChats(): StoredChat[];
+  getChat(id: string): StoredChat | undefined;
+  saveChat(id: string, chat: StoredChat): void;
+  nextId(): string;
+}
 
 const THRESHOLD = 3; // messages (user + AI combined) before persisting (R1)
 const CAP = 10; // max stored chats; oldest evicted (R4)
@@ -24,38 +52,45 @@ const STORAGE_KEY = 'bravochat.savedChats';
 /**
  * Create a chat store over a storage backend.
  * The seam is synchronous get/set-by-key, so tests pass a Map-backed adapter.
- * @param {{ getItem(key: string): string | null, setItem(key: string, value: string): void }} storage
- * @param {() => number} [now] clock injection for deterministic eviction tests
+ * @param now clock injection for deterministic eviction tests
  */
-export function createChatStore(storage, now = () => Date.now()) {
-  /** @type {StoredChat[]} */
-  let chats = read();
+export function createChatStore(storage: ChatStorage, now: () => number = () => Date.now()): ChatStore {
+  let chats: StoredChat[] = read();
 
-  /** @type {Map<string, {text: string, sender: string}[]>} below-threshold buffers per chat id */
-  const pendingMessages = new Map();
+  /** below-threshold buffers per chat id */
+  const pendingMessages = new Map<string, StoredMessage[]>();
 
-  function read() {
+/** Minimal shape guard: valid JSON of the wrong form degrades to empty like parse failures. */
+  function isStoredChat(value: unknown): value is StoredChat {
+    return (
+      typeof value === 'object' && value !== null &&
+      typeof (value as { id?: unknown }).id === 'string' &&
+      Array.isArray((value as { messages?: unknown }).messages)
+    );
+  }
+
+  function read(): StoredChat[] {
     try {
       const raw = storage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
+      if (!raw) return [];
+      const parsed: unknown = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter(isStoredChat) : [];
     } catch {
       return []; // corrupt storage degrades to empty, never crashes the app
     }
   }
 
-  function write() {
+  function write(): void {
     storage.setItem(STORAGE_KEY, JSON.stringify(chats));
   }
 
   /**
    * Record a message against a chat, persisting once the threshold clears.
    * No-ops below THRESHOLD messages total (R1). Updates recency (R9).
-   * @param {string} id the live chat's persisted id (created by the caller via nextId)
-   * @param {'user' | 'ai'} sender
-   * @param {string} text
-   * @param {object} [memory] response-engine snapshot to store with the latest message
+   * @param id the live chat's persisted id (created by the caller via nextId)
+   * @param memory response-engine snapshot to store with the latest message
    */
-  function recordMessage(id, sender, text, memory) {
+  function recordMessage(id: string, sender: 'user' | 'ai', text: string, memory?: ConversationMemory): void {
     // R1: messages accumulate in a pending buffer; the message that brings
     // the total to THRESHOLD flushes the whole buffer into storage.
     const stored = chats.find((c) => c.id === id);
@@ -80,15 +115,18 @@ export function createChatStore(storage, now = () => Date.now()) {
     chat.updatedAt = now();
 
     if (!chat.title) {
-      chat.title = deriveTitle(chat.messages); // assigned once (R7)
-      chat.garnish = garnishFor(chat.messages);
+      // Titles derive from user messages only: Johnny's AI lines are saturated
+      // with routing keywords and would otherwise dominate the label.
+      const userMessages = chat.messages.filter((m) => m.sender === 'user');
+      chat.title = deriveTitle(userMessages); // assigned once (R7)
+      chat.garnish = garnishFor(userMessages);
     }
     evict();
     write();
   }
 
   /** Cap enforcement (R4): drop oldest-updated beyond CAP. */
-  function evict() {
+  function evict(): void {
     if (chats.length <= CAP) return;
     const ordered = [...chats].sort((a, b) => a.updatedAt - b.updatedAt);
     const drop = new Set(ordered.slice(0, ordered.length - CAP).map((c) => c.id));
@@ -97,9 +135,8 @@ export function createChatStore(storage, now = () => Date.now()) {
 
   /**
    * Touch recency for a resumed chat so continued use refreshes eviction order (AE5).
-   * @param {string} id
    */
-  function touch(id) {
+  function touch(id: string): void {
     const chat = chats.find((c) => c.id === id);
     if (chat) {
       chat.updatedAt = now();
@@ -108,21 +145,19 @@ export function createChatStore(storage, now = () => Date.now()) {
     }
   }
 
-  /** @returns {StoredChat[]} newest-first for sidebar rendering (R3) */
-  function listChats() {
+  /** newest-first for sidebar rendering (R3) */
+  function listChats(): StoredChat[] {
     return [...chats].sort((a, b) => b.updatedAt - a.updatedAt);
   }
 
-  /** @param {string} id @returns {StoredChat | undefined} */
-  function getChat(id) {
+  function getChat(id: string): StoredChat | undefined {
     return chats.find((c) => c.id === id);
   }
 
   /**
    * Replace a chat wholesale (resume path: engine replays state, UI saves snapshot).
-   * @param {string} id @param {StoredChat} chat
    */
-  function saveChat(id, chat) {
+  function saveChat(id: string, chat: StoredChat): void {
     const i = chats.findIndex((c) => c.id === id);
     if (i >= 0) chats[i] = { ...chat, id, updatedAt: now() };
     else chats.push({ ...chat, id, updatedAt: now() });
@@ -131,7 +166,7 @@ export function createChatStore(storage, now = () => Date.now()) {
   }
 
   /** Fresh persisted-chat id (namespace distinguishes real from fake data-ids). */
-  function nextId() {
+  function nextId(): string {
     return `p:${now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
   }
 
