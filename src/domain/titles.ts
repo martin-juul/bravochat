@@ -4,22 +4,18 @@
  * with a Johnny-flavored garnish for the hover text. No randomization (R5–R7).
  */
 
-import { extractMention } from './responses';
+import { extractMention, routingPatterns, type ResponseCategory } from './responses';
 
-/** Title categories, mirroring `getResponse()`'s routing order. */
-type TitleCategory = 'date' | 'mama' | 'hair' | 'muscle' | 'hello';
+/** Title categories reuse the response-engine routing categories. */
+type TitleCategory = Exclude<ResponseCategory, 'default'>;
 
-/** Routing category regexes, mirroring getResponse()'s order in responses.ts. */
-const categoryPatterns: [TitleCategory, RegExp][] = [
-  ['date', /\b(date|dating|girl|girls|lady|ladies|love|kiss|romance|crush|girlfriend|boyfriend|relationship)\b/i],
-  ['mama', /\b(mama|mom|mother|mommy)\b/i],
-  ['hair', /\b(hair|pompadour|style|hairstyle|hairspray|gel)\b/i],
-  ['muscle', /\b(muscle|muscles|gym|strong|workout|lift|bicep|biceps|flex|fitness|ripped|buff)\b/i],
-  ['hello', /\b(hi|hello|hey|yo|sup|howdy|greetings)\b/i],
-];
+/** Case-insensitive variants of the canonical routing patterns (titles match raw text). */
+const categoryPatterns: [TitleCategory, RegExp][] = routingPatterns.map(
+  ([category, pattern]) => [category, new RegExp(pattern.source, 'i')],
+);
 
 /** Plain visible labels per dominant category (R5). */
-const categoryLabels: Record<TitleCategory, string> = {
+const categoryLabels: Record<Exclude<TitleCategory, 'default'>, string> = {
   date: 'Dating advice',
   mama: 'Mama stories',
   hair: 'Hair care tips',
@@ -28,7 +24,7 @@ const categoryLabels: Record<TitleCategory, string> = {
 };
 
 /** Johnny garnish per category, surfaced as the item's hover text (R6). */
-const categoryGarnishes: Record<TitleCategory | 'default', string> = {
+const categoryGarnishes: Record<Exclude<TitleCategory, 'default'> | 'default', string> = {
   date: '100% date-tested, sugar',
   mama: "Mama approved. Obviously. She's a saint",
   hair: 'Certified 47 minutes of spray',

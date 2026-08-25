@@ -123,7 +123,10 @@ export function patchChildren(parent: Element, oldChildren: VElement['children']
   // Pass 3: inserts and repositioning moves, anchored to whatever follows live.
   for (const op of ops) {
     if (op.op !== 'insert' && op.op !== 'move') continue;
-    const node = createEl(newChildren[op.index] as VNode);
+    // Moves reposition the node pass 2 already patched in place; only inserts build fresh nodes.
+    const node = op.op === 'move'
+      ? (liveFor[op.index] ?? createEl(newChildren[op.index] as VNode))
+      : createEl(newChildren[op.index] as VNode);
     let anchor: Node | null = null;
     for (let i = op.index + 1; i < liveFor.length; i++) {
       const live = liveFor[i];

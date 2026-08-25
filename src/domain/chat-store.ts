@@ -60,10 +60,21 @@ export function createChatStore(storage: ChatStorage, now: () => number = () => 
   /** below-threshold buffers per chat id */
   const pendingMessages = new Map<string, StoredMessage[]>();
 
+/** Minimal shape guard: valid JSON of the wrong form degrades to empty like parse failures. */
+  function isStoredChat(value: unknown): value is StoredChat {
+    return (
+      typeof value === 'object' && value !== null &&
+      typeof (value as { id?: unknown }).id === 'string' &&
+      Array.isArray((value as { messages?: unknown }).messages)
+    );
+  }
+
   function read(): StoredChat[] {
     try {
       const raw = storage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as StoredChat[]) : [];
+      if (!raw) return [];
+      const parsed: unknown = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter(isStoredChat) : [];
     } catch {
       return []; // corrupt storage degrades to empty, never crashes the app
     }
@@ -104,8 +115,11 @@ export function createChatStore(storage: ChatStorage, now: () => number = () => 
     chat.updatedAt = now();
 
     if (!chat.title) {
-      chat.title = deriveTitle(chat.messages); // assigned once (R7)
-      chat.garnish = garnishFor(chat.messages);
+      // Titles derive from user messages only: Johnny's AI lines are saturated
+      // with routing keywords and would otherwise dominate the label.
+      const userMessages = chat.messages.filter((m) => m.sender === 'user');
+      chat.title = deriveTitle(userMessages); // assigned once (R7)
+      chat.garnish = garnishFor(userMessages);
     }
     evict();
     write();

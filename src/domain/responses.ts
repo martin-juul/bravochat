@@ -95,6 +95,22 @@ export const typingPhrases: string[] = [
 ];
 
 /**
+ * Canonical routing patterns per category, in routing order. `hello` is
+ * length-gated in `getResponse`; title derivation uses the ungated pattern.
+ * Titles and routing share this table so keyword edits stay in lockstep.
+ */
+export const routingPatterns: ReadonlyArray<readonly [Exclude<ResponseCategory, 'default'>, RegExp]> = [
+  ['hello', /\b(hi|hello|hey|yo|sup|howdy|greetings)\b/],
+  ['date', /\b(date|dating|girl|girls|lady|ladies|love|kiss|romance|crush|girlfriend|boyfriend|relationship)\b/],
+  ['mama', /\b(mama|mom|mother|mommy)\b/],
+  ['muscle', /\b(muscle|muscles|gym|strong|workout|lift|bicep|biceps|flex|fitness|ripped|buff)\b/],
+  ['hair', /\b(hair|pompadour|style|hairstyle|hairspray|gel)\b/],
+];
+
+/** Jokes intentionally fall back to the default pool. */
+const jokePattern = /\b(joke|funny|laugh|humor|haha)\b/;
+
+/**
  * Route user text to a response by keyword matching, never repeating a line
  * within the same conversation (until its pool is exhausted, then it resets).
  * @param userText - the raw user message.
@@ -105,22 +121,16 @@ export function getResponse(userText: string): string {
   let pool: string[] = responses.default;
   let poolKey: ResponseCategory = 'default';
 
-  if (/\b(hi|hello|hey|yo|sup|howdy|greetings)\b/.test(lower) && lower.length < 20) {
-    pool = responses.hello;
-    poolKey = 'hello';
-  } else if (/\b(date|dating|girl|girls|lady|ladies|love|kiss|romance|crush|girlfriend|boyfriend|relationship)\b/.test(lower)) {
-    pool = responses.date;
-    poolKey = 'date';
-  } else if (/\b(mama|mom|mother|mommy)\b/.test(lower)) {
-    pool = responses.mama;
-    poolKey = 'mama';
-  } else if (/\b(muscle|muscles|gym|strong|workout|lift|bicep|biceps|flex|fitness|ripped|buff)\b/.test(lower)) {
-    pool = responses.muscle;
-    poolKey = 'muscle';
-  } else if (/\b(hair|pompadour|style|hairstyle|hairspray|gel)\b/.test(lower)) {
-    pool = responses.hair;
-    poolKey = 'hair';
-  } else if (/\b(joke|funny|laugh|humor|haha)\b/.test(lower)) {
+  for (const [category, pattern] of routingPatterns) {
+    if (category === 'hello' && lower.length >= 20) continue; // greetings only when short
+    if (pattern.test(lower)) {
+      pool = responses[category];
+      poolKey = category;
+      break;
+    }
+  }
+  if (poolKey === 'default' && jokePattern.test(lower)) {
+    // jokes keep the default pool; explicit for readability
     pool = responses.default;
   }
 
