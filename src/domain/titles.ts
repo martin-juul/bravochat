@@ -1,7 +1,6 @@
 /**
  * @file Title derivation for persisted chats: rule-based, deterministic.
- * Plain factual labels from the conversation's dominant routing category,
- * with a Johnny-flavored garnish for the hover text. No randomization (R5–R7).
+ * Plain labels from the dominant routing category + Johnny garnish.
  */
 
 import { extractMention, routingPatterns, type ResponseCategory } from './responses';
@@ -14,7 +13,7 @@ const categoryPatterns: [TitleCategory, RegExp][] = routingPatterns.map(
   ([category, pattern]) => [category, new RegExp(pattern.source, 'i')],
 );
 
-/** Plain visible labels per dominant category (R5). */
+/** Plain visible labels per dominant category. */
 const categoryLabels: Record<Exclude<TitleCategory, 'default'>, string> = {
   date: 'Dating advice',
   mama: 'Mama stories',
@@ -23,7 +22,7 @@ const categoryLabels: Record<Exclude<TitleCategory, 'default'>, string> = {
   hello: 'Greetings',
 };
 
-/** Johnny garnish per category, surfaced as the item's hover text (R6). */
+/** Johnny garnish per category, surfaced as hover text. */
 const categoryGarnishes: Record<Exclude<TitleCategory, 'default'> | 'default', string> = {
   date: '100% date-tested, sugar',
   mama: "Mama approved. Obviously. She's a saint",
@@ -33,14 +32,9 @@ const categoryGarnishes: Record<Exclude<TitleCategory, 'default'> | 'default', s
   default: " Johnny was paying attention. Sort of",
 };
 
-/**
- * Derive a plain title from the conversation's user messages (R5).
- * Counts routing-category hits, dominant wins; ties break by first-seen
- * category for determinism. Falls back to a capitalized extracted mention,
- * then "Chat with Johnny". Deterministic for a given message list.
- * @param messages the conversation's messages
- * @returns the visible title
- */
+/** Derive a plain title from user messages: dominant routing category wins
+ * (ties break by first-seen for determinism); falls back to a capitalized
+ * extracted mention, then "Chat with Johnny". */
 export function deriveTitle(messages: { text: string }[]): string {
   const counts = new Map<TitleCategory, number>();
   let firstSeen: TitleCategory[] = [];
@@ -76,10 +70,7 @@ export function deriveTitle(messages: { text: string }[]): string {
   return 'Chat with Johnny';
 }
 
-/**
- * The Johnny garnish for a conversation's hover text (R6).
- * @returns garnish appended to the plain title in the title attribute
- */
+/** The Johnny garnish for a conversation's hover text. */
 export function garnishFor(messages: { text: string }[]): string {
   let garnish = categoryGarnishes.default;
   for (const msg of messages) {

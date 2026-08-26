@@ -1,36 +1,26 @@
 /**
- * Background system.
- *
- * The atomic pattern and floating shapes are GPU-composited CSS animations:
- * they are rasterized ONCE to offscreen canvases here (pixel-identical to the
- * old per-frame vector drawing) and handed to CSS as background images, so
- * idle CPU is ~0. The canvas rAF loop runs ONLY while sparkle particles are
- * alive (started by spawnSparkles, self-stopping when the last one dies).
+ * Background system: the atomic pattern and floating shapes are rasterized
+ * ONCE to offscreen canvases and handed to CSS as background images, so idle
+ * CPU is ~0. The canvas rAF loop runs ONLY while sparkle particles are alive.
  */
 
 interface FloatingShape {
-  /** normalized horizontal position (0–1) */
-  x: number;
-  /** normalized vertical position (0–1) */
-  y: number;
+  x: number; // normalized horizontal position (0–1)
+  y: number; // normalized vertical position (0–1)
   type: 'star5' | 'star4' | 'ring_dot' | 'circle';
   color?: string;
   color1?: string;
   color2?: string;
-  /** diameter in px */
-  size: number;
-  /** bob-cycle offset in seconds */
-  phase: number;
+  size: number; // diameter in px
+  phase: number; // bob-cycle offset in seconds
 }
 
-/** A sparkle particle. */
 interface Sparkle {
   x: number;
   y: number;
   vx: number;
   vy: number;
-  /** 1 → 0, particle dies at 0 */
-  life: number;
+  life: number; // 1 → 0, particle dies at 0
   color: string;
   rotation: number;
   rotSpeed: number;
@@ -39,15 +29,7 @@ interface Sparkle {
 
 const PATTERN_SIZE = 140;
 
-/**
- * Draw an N-pointed star path (no fill/stroke).
- * @param ctx the 2D canvas context
- * @param cx center x
- * @param cy center y
- * @param spikes number of points
- * @param outer outer radius
- * @param inner inner radius
- */
+/** Draw an N-pointed star path (no fill/stroke). */
 function drawStar(
   ctx: CanvasRenderingContext2D,
   cx: number,
@@ -157,11 +139,7 @@ const bgShapes: FloatingShape[] = [
   { x: 0.05, y: 0.45, type: 'star4', color: 'rgba(46, 196, 182, 0.4)', size: 30, phase: -12 },
 ];
 
-/**
- * Install the CSS-animated background: the repeating atom pattern and the
- * five floating shapes (sprite data URLs + per-shape position/size/phase).
- * No animation loop is started — CSS owns all continuous motion.
- */
+/** Install the CSS-animated background; no animation loop is started. */
 export function initBackground(): void {
   const pattern = document.querySelector<HTMLElement>('.bg-pattern');
   if (pattern) pattern.style.backgroundImage = `url(${patternSprite()})`;
@@ -181,7 +159,7 @@ export function initBackground(): void {
   }
 }
 
-// ============ Sparkles (the only canvas-rendered, JS-animated effect) ============
+// Sparkles: the only canvas-rendered, JS-animated effect
 
 const fxCanvas = document.getElementById('fx-canvas') as HTMLCanvasElement;
 const fxCtx = fxCanvas.getContext('2d') as CanvasRenderingContext2D;
@@ -205,16 +183,11 @@ resizeFxCanvas();
 
 const sparkles: Sparkle[] = [];
 
-/** whether the sparkle loop is currently scheduled */
-let loopRunning = false;
+let loopRunning = false; // whether the sparkle loop is currently scheduled
 let lastTime = performance.now();
 
-/**
- * Emit an 8-particle sparkle burst centered on (x, y) — called on message send.
- * Starts the canvas loop on demand; it self-stops when the last particle dies.
- * @param x viewport x
- * @param y viewport y
- */
+/** Emit an 8-particle sparkle burst centered on (x, y) — called on message send.
+ * Starts the canvas loop on demand; it self-stops when the last particle dies. */
 export function spawnSparkles(x: number, y: number): void {
   const colors = ['#FFD93D', '#FF3D7F', '#2EC4B6', '#FFE54C'];
   for (let i = 0; i < 8; i++) {
@@ -239,9 +212,6 @@ export function spawnSparkles(x: number, y: number): void {
   }
 }
 
-/**
- * One sparkle frame. Returns early (ending the loop) once no particles remain.
- */
 function animateSparkles(now: DOMHighResTimeStamp): void {
   if (sparkles.length === 0) {
     fxCtx.clearRect(0, 0, W, H);

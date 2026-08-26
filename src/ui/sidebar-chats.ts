@@ -1,15 +1,10 @@
 // Persisted-chats sidebar section: vdom-rendered, keyed, below the pre-baked
-// fake histories. Plain labels, Johnny garnish on hover (R3, R6).
+// fake histories.
 import { h, type VElement, type VRaw } from '../vdom/core';
 import { patchChildren, ownContainer } from '../vdom/dom';
 import type { StoredChat } from '../domain/chat-store';
 
-/**
- * Render the persisted-chats list into its container.
- * @param container the #saved-chats element
- * @param chats newest-first from the store
- * @param activeId the currently open persisted chat id, if any
- */
+/** Render the persisted-chats list (newest-first) into `container`. */
 export function renderSavedChats(container: HTMLElement, chats: StoredChat[], activeId: string | null): void {
   ownContainer(container);
   const next = chats.length
@@ -31,10 +26,9 @@ export function renderSavedChats(container: HTMLElement, chats: StoredChat[], ac
   savedByContainer.set(container, next);
 }
 
-/** the last rendered children per container, for keyed patching */
+/** last rendered children per container, for keyed patching */
 const savedByContainer = new WeakMap<HTMLElement, VElement['children']>();
 
-/** The chat bubble icon (mirrors the fake history items'). */
 function chatIcon(): VRaw {
   return {
     type: 'raw',

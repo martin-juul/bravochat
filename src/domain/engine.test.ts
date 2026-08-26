@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { responses, type ConversationMemory } from './responses';
 import type { EngineEvent } from './engine';
 
-// Recapture a fresh module per test so singleton state never leaks (KTD5 +
+// Recapture a fresh module per test so singleton state never leaks (isolation for
 // module-singleton engine; vi.resetModules with dynamic imports).
 async function freshEngine() {
   vi.resetModules();
@@ -69,7 +69,7 @@ describe('send', () => {
 });
 
 describe('session race guard', () => {
-  it('drops a pending send response after loadHistory (AE1)', async () => {
+  it('drops a pending send response after loadHistory', async () => {
     const engine = await freshEngine();
     const { events, listener } = collector();
     engine.subscribe(listener);
@@ -107,7 +107,7 @@ describe('session race guard', () => {
 });
 
 describe('regenerate', () => {
-  it('is a no-op while a response is pending (AE2 precondition)', async () => {
+  it('is a no-op while a response is pending', async () => {
     const engine = await freshEngine();
     const { events, listener } = collector();
     engine.subscribe(listener);
@@ -249,7 +249,7 @@ describe('resumeChat', () => {
     expect(events.filter((e) => e.type === 'response-ready')).toHaveLength(1);
   });
 
-  it('send after resume keeps the chat id (no duplicate chat, R9)', async () => {
+  it('send after resume keeps the chat id (no duplicate chat)', async () => {
     const engine = await freshEngine();
     engine.resumeChat({ id: 'p:x1', conversation: [
       { text: 'hi', sender: 'user' as const },
@@ -259,7 +259,7 @@ describe('resumeChat', () => {
     expect(engine.getCurrentChatId()).toBe('p:x1');
   });
 
-  it('restores no-repeat memory across the resume boundary (AE3 unit)', async () => {
+  it('restores no-repeat memory across the resume boundary', async () => {
     const engine = await freshEngine();
     // Exhaust the hello pool in the snapshot, resume, and ask hello again:
     // pickUnseen must reset the pool rather than repeat a served line.
@@ -277,7 +277,7 @@ describe('resumeChat', () => {
     expect(ready?.text.length).toBeGreaterThan(0);
   });
 
-  it('startNewChat after resume clears the resumed state (R10)', async () => {
+  it('startNewChat after resume clears the resumed state', async () => {
     const engine = await freshEngine();
     engine.resumeChat({ id: 'p:x1', conversation: [{ text: 'hi', sender: 'user' as const }] });
     engine.startNewChat();
@@ -291,7 +291,7 @@ describe('resumeChat', () => {
     const engine = await freshEngine();
     const { events, listener } = collector();
     engine.subscribe(listener);
-    // Runtime guards mirror the old duck-typed checks; cast exercises them (AE2-style).
+    // Runtime guards mirror the old duck-typed checks; cast exercises them.
     engine.resumeChat(null as unknown as never);
     engine.resumeChat({ conversation: 'nope' } as unknown as never);
     expect(events).toEqual([]);

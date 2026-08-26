@@ -1,7 +1,6 @@
 // Chat wiring: UI commands into the engine, engine events into rendering.
-// All orchestration (state, race guards, response scheduling) lives in
-// src/domain/engine.ts; this module only renders presentation effects and
-// feeds the persistence store as a passive subscriber (KTD5).
+// All orchestration (state, race guards, scheduling) lives in domain/engine.ts;
+// this module only renders presentation effects and feeds the persistence store.
 import {
   send as engineSend,
   regenerate as engineRegenerate,
@@ -33,21 +32,14 @@ import { renderSavedChats } from './sidebar-chats';
 
 let store: ChatStore | null = null;
 
-/** the #saved-chats container */
 let savedChatsEl: HTMLElement | null = null;
-
-/** persisted-chat id for the live conversation, if any */
 let liveChatId: string | null = null;
 
-/** Refresh the saved-chats sidebar section from the store. */
 function refreshSavedChats(): void {
   if (!store || !savedChatsEl) return;
   renderSavedChats(savedChatsEl, store.listChats(), isResumedChat() ? getCurrentChatId() : null);
 }
 
-/**
- * Initialize chat flow wiring with the persistence store.
- */
 export function initChatFlow(chatStore: ChatStore): void {
   store = chatStore;
   savedChatsEl = document.getElementById('saved-chats');
@@ -56,10 +48,8 @@ export function initChatFlow(chatStore: ChatStore): void {
   setTimeout(() => inputEl.focus(), 300);
 }
 
-/**
- * Send the current input: render the user bubble and sparkles around the
- * engine call (commands emit synchronously, so the bubble renders first).
- */
+/** Send the current input: render the user bubble and sparkles around the
+ * engine call (commands emit synchronously, so the bubble renders first). */
 export function sendMessage(): void {
   const text = inputEl.value.trim();
   if (!text || getIsResponding()) return;
@@ -75,8 +65,7 @@ export function sendMessage(): void {
   addMessage(text, 'user');
   sendBtn.disabled = true;
 
-  // Persistence (R1): a resumed chat keeps its id; a fresh chat gets one on
-  // its first send and keeps it for the conversation's lifetime.
+  // A resumed chat keeps its id; a fresh chat gets one on its first send.
   try {
     if (!liveChatId) liveChatId = isResumedChat() ? getCurrentChatId() : (store?.nextId() ?? null);
     if (liveChatId) store?.recordMessage(liveChatId, 'user', text);
@@ -87,11 +76,6 @@ export function sendMessage(): void {
   engineSend(text);
 }
 
-/**
- * Regenerate the last AI response: remove the old bubble, then ask the
- * engine to re-answer the last user message.
- * No-op when a response is pending or there is nothing to regenerate.
- */
 export function regenerateResponse(): void {
   if (getIsResponding() || !getLastUserText()) return;
 
@@ -100,7 +84,6 @@ export function regenerateResponse(): void {
   engineRegenerate();
 }
 
-/** Reset to the welcome screen via the engine. */
 export function startNewChat(): void {
   newChatBtn.classList.add('pulse');
   setTimeout(() => newChatBtn.classList.remove('pulse'), 500);
@@ -110,16 +93,14 @@ export function startNewChat(): void {
   inputEl.focus();
 }
 
-/**
- * Load a chat from the sidebar: pre-baked fakes by data-id, persisted chats
- * by their `p:`-prefixed id (routed to engine.resumeChat, R8).
- */
+/** Load a sidebar chat: pre-baked fakes by data-id, persisted chats by their
+ * `p:`-prefixed id. */
 export function loadChatHistory(chatId: string): void {
   if (chatId.startsWith('p:')) {
     const chat = store?.getChat(chatId);
     if (!chat || getCurrentChatId() === chatId) return;
     liveChatId = chatId;
-    store?.touch(chatId); // recency bump (AE5)
+    store?.touch(chatId); // recency bump
     messagesEl.classList.add('switching');
     engineResumeChat({ id: chat.id, conversation: chat.messages, memory: chat.memory });
     refreshSavedChats();
@@ -131,9 +112,6 @@ export function loadChatHistory(chatId: string): void {
   engineLoadHistory(chatId);
 }
 
-/**
- * Suggestion-chip click handler: fill the input and send.
- */
 export function handleChipClick(e: MouseEvent): void {
   const chip = (e.target as HTMLElement | null)?.closest<HTMLElement>('.chip');
   if (chip && chip.dataset.text) {
@@ -143,9 +121,6 @@ export function handleChipClick(e: MouseEvent): void {
   }
 }
 
-/**
- * Render engine events. Presentation only — no state decisions here.
- */
 function handleEngineEvent(event: EngineEvent): void {
   switch (event.type) {
     case 'typing-started':
@@ -173,9 +148,8 @@ function handleEngineEvent(event: EngineEvent): void {
       break;
 
     case 'history-loaded': {
-      // Sidebar highlight updates immediately; the visual switch fade plays out
-      // over 220ms (KTD4: the UI owns the presentation delay). The staleness
-      // guard keeps a New Chat clicked during the window from being stomped.
+      // Sidebar highlight is immediate; the fade plays out over 220ms. The
+      // staleness guard keeps a New Chat clicked during the window from being stomped.
       const id = event.historyId ?? null;
       setActiveHistoryItem(id);
       setTimeout(() => {

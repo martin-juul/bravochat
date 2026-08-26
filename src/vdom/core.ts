@@ -1,8 +1,6 @@
 /**
- * @file Mini Bravo DOM — a hand-rolled, keyed-diff virtual DOM.
- * `core.js` is pure data + diff logic: no DOM, no browser globals, fully
- * unit-testable in Node (the vdom equivalent of looking great in a mirror).
- *
+ * @file Mini Bravo DOM — a hand-rolled, keyed-diff virtual DOM. `core.ts` is
+ * pure data + diff logic: no DOM, no browser globals, Node-testable.
  * Rendered nodes are plain vnode objects:
  *   { type: 'element', tag, props, key, children }
  *   { type: 'text', text }
@@ -10,19 +8,16 @@
  *   undefined/null/false/''      // holes, render as nothing
  */
 
-/** A text vnode. */
 export interface VText {
   type: 'text';
   text: string;
 }
 
-/** A trusted innerHTML leaf vnode (static SVG strings). */
 export interface VRaw {
   type: 'raw';
   html: string;
 }
 
-/** A virtual element node. */
 export interface VElement {
   type: 'element';
   tag: string;
@@ -31,7 +26,6 @@ export interface VElement {
   children: VChildNode[];
 }
 
-/** Any renderable vnode. Holes (`null`/`false`/`undefined`/`''`) normalize away. */
 export type VNode = VElement | VText | VRaw;
 export type VChildNode = VNode; // holes never survive normalize()
 
@@ -42,12 +36,7 @@ function normalize(child: VNode | string | number | null | false | undefined): V
   return { type: 'text', text: String(child) };
 }
 
-/**
- * Create a virtual element node.
- * @param tag element tag name ('div', 'svg', 'button', ...)
- * @param props attributes/properties; `key` participates in child diffing.
- * @param children child values; holes normalize away.
- */
+/** Create a virtual element node; `props.key` participates in child diffing. */
 export function h(
   tag: string,
   props: Record<string, unknown> = {},
@@ -61,35 +50,24 @@ export function h(
   return { type: 'element', tag, props, key: (props.key as string | number | undefined) ?? null, children: flat };
 }
 
-/**
- * Patch plan operations produced by `diffChildren`. Consumers (like the DOM
- * renderer in `dom.ts`) execute them; tests count them. Keeping the plan
- * declarative is what makes the vdom benchmarkable without a browser.
- */
+/** Patch plan operations produced by `diffChildren`. Keeping the plan
+ * declarative makes the vdom benchmarkable without a browser. */
 export interface PatchOp {
   op: 'insert' | 'move' | 'remove' | 'update';
-  /** new-children index this op applies to */
-  index: number;
-  /** old-children index (move/update, -1 for insert/remove) */
-  from: number;
+  index: number; // new-children index this op applies to
+  from: number; // old-children index (-1 for insert/remove)
   key: string | number | null;
 }
 
-/**
- * Compute the minimal operation list transforming old children into new
- * children, matching keyed nodes by `key` (falling back to index + type).
- * Classic keyed-diff shape (à la snabbdom's simplest correct form):
- * reuse keyed matches in place, then emit moves/removes/inserts.
- */
+/** Compute the minimal op list transforming old children into new children,
+ * matching keyed nodes by `key` (falling back to index + type). */
 export function diffChildren(oldChildren: VElement['children'], newChildren: VElement['children']): PatchOp[] {
-  /** key -> old index */
-  const oldKeyMap = new Map<string | number, number>();
+  const oldKeyMap = new Map<string | number, number>(); // key -> old index
   oldChildren.forEach((c, i) => {
     if (c.type === 'element' && c.key != null) oldKeyMap.set(c.key, i);
   });
 
-  /** new index -> matched old index (null = insert) */
-  const match: (number | null)[] = newChildren.map((n) => {
+  const match: (number | null)[] = newChildren.map((n) => { // new index -> matched old index (null = insert)
     if (n.type === 'element' && n.key != null && oldKeyMap.has(n.key)) {
       return oldKeyMap.get(n.key) ?? null;
     }
@@ -146,11 +124,8 @@ export function diffChildren(oldChildren: VElement['children'], newChildren: VEl
   return ops;
 }
 
-/**
- * Whether two vnodes can reuse the same rendered output (same kind and, for
- * elements, the same tag). Text-vs-text, raw-vs-raw, and same-tag elements
- * patch in place; everything else replaces.
- */
+/** Whether two vnodes can reuse the same rendered output (same kind and,
+ * for elements, the same tag). */
 export function sameKind(a: VNode | null, b: VNode | null): boolean {
   if (!a || !b) return false;
   if (a.type !== b.type) return false;
@@ -158,9 +133,6 @@ export function sameKind(a: VNode | null, b: VNode | null): boolean {
   return true;
 }
 
-/**
- * Compute prop-level differences between two prop objects.
- */
 export function diffProps(
   oldProps: Record<string, unknown> = {},
   newProps: Record<string, unknown> = {},

@@ -30,7 +30,7 @@ beforeEach(() => {
   store = createChatStore(storage, clock);
 });
 
-describe('threshold (R1, AE1)', () => {
+describe('threshold', () => {
   it('stores nothing below 3 messages', () => {
     store.recordMessage('p:a', 'user', 'hello');
     store.recordMessage('p:a', 'ai', 'hey sugar');
@@ -49,7 +49,7 @@ describe('threshold (R1, AE1)', () => {
   });
 });
 
-describe('titles (R5–R7)', () => {
+describe('titles', () => {
   it('derives a deterministic dominant-category title', () => {
     const msgs = [
       { text: 'how do I fix my hair', sender: 'user' as const },
@@ -92,7 +92,7 @@ describe('titles (R5–R7)', () => {
     expect(garnishFor([{ text: 'zzz nothing' }])).toContain('Johnny');
   });
 
-  it('title assigned once and never changes on later drift (R7)', () => {
+  it('title assigned once and never changes on later drift', () => {
     store.recordMessage('p:a', 'user', 'hair hair');
     store.recordMessage('p:a', 'ai', 'ok');
     store.recordMessage('p:a', 'user', 'hair');
@@ -103,7 +103,7 @@ describe('titles (R5–R7)', () => {
   });
 });
 
-describe('cap and eviction (R4, AE4, AE5)', () => {
+describe('cap and eviction', () => {
   it('evicts the oldest when an 11th chat qualifies', () => {
     for (let i = 0; i < 11; i++) {
       const id = `p:${i}`;
@@ -115,7 +115,7 @@ describe('cap and eviction (R4, AE4, AE5)', () => {
     expect(ids).toContain('p:10');
   });
 
-  it('touch refreshes eviction recency (AE5)', () => {
+  it('touch refreshes eviction recency', () => {
     for (let i = 0; i < 10; i++) {
       for (let m = 0; m < 3; m++) store.recordMessage(`p:${i}`, m % 2 ? 'ai' : 'user', `m${m}`);
     }
@@ -130,7 +130,7 @@ describe('cap and eviction (R4, AE4, AE5)', () => {
 });
 
 describe('persistence', () => {
-  it('survives storage round-trip (reload simulation, R2/AE2)', () => {
+  it('survives storage round-trip (reload simulation)', () => {
     store.recordMessage('p:a', 'user', 'hair question one');
     store.recordMessage('p:a', 'ai', 'answer');
     store.recordMessage('p:a', 'user', 'hair question two');

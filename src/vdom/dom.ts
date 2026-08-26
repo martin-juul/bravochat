@@ -1,14 +1,11 @@
 /**
  * @file DOM renderer for the Mini Bravo DOM vdom: executes the diff plans
- * from `core.js` against the real DOM. This is the only vdom file that
- * touches the browser; everything else is pure and Node-testable.
+ * from `core.ts` against the real DOM. The only vdom file that touches the
+ * browser; everything else is pure and Node-testable.
  */
 
 import { diffChildren, diffProps, sameKind, type VElement, type VNode } from './core';
 
-/**
- * Build a real DOM node from a vnode.
- */
 export function createEl(vnode: VNode): Node {
   if (vnode.type === 'text') return document.createTextNode(vnode.text);
   if (vnode.type === 'raw') {
@@ -29,12 +26,8 @@ export function createEl(vnode: VNode): Node {
   return el;
 }
 
-/** Property names assigned directly as DOM properties rather than attributes. */
 const livePropNames = new Set(['value', 'checked', 'disabled']);
 
-/**
- * Apply a computed prop diff to a live element.
- */
 function applyProps(el: Element, propDiff: { set: Record<string, unknown>; removed: string[] }): void {
   for (const [name, value] of Object.entries(propDiff.set)) {
     if (name === 'key') continue;
@@ -43,7 +36,8 @@ function applyProps(el: Element, propDiff: { set: Record<string, unknown>; remov
       continue;
     }
     if (name.startsWith('on') && typeof value === 'function') {
-      (el as unknown as Record<string, unknown>)[name] = value; // event handlers assigned as properties (no listener leak on diff)
+      // event handlers assigned as properties — no listener leak on diff
+      (el as unknown as Record<string, unknown>)[name] = value;
       continue;
     }
     if (livePropNames.has(name)) {
@@ -62,11 +56,8 @@ function applyProps(el: Element, propDiff: { set: Record<string, unknown>; remov
   }
 }
 
-/**
- * Patch a live DOM node in place from old vnode to new vnode.
- * @param dom the node rendered from `oldVNode`
- * @returns the (possibly replaced) live node
- */
+/** Patch a live DOM node in place from old vnode to new vnode, replacing it
+ * when the kinds are incompatible. */
 export function patchEl(dom: Node, oldVNode: VNode | null, newVNode: VNode): Node {
   if (!oldVNode || !sameKind(oldVNode, newVNode)) {
     const fresh = createEl(newVNode);
@@ -89,7 +80,7 @@ export function patchEl(dom: Node, oldVNode: VNode | null, newVNode: VNode): Nod
 
   const el = dom as Element;
   if (oldVNode.type !== 'element') {
-    // sameKind guaranteed both are elements here; belt-and-braces rebuild otherwise
+    // sameKind guaranteed both are elements; belt-and-braces rebuild otherwise
     const fresh = createEl(newVNode);
     dom.parentNode?.replaceChild(fresh, dom);
     return fresh;
@@ -99,11 +90,7 @@ export function patchEl(dom: Node, oldVNode: VNode | null, newVNode: VNode): Nod
   return el;
 }
 
-/**
- * Execute a children diff plan against a live parent, minimizing DOM ops:
- * matched nodes are patched in place, inserts and removes are executed
- * against the live child list.
- */
+/** Execute a children diff plan against a live parent, minimizing DOM ops. */
 export function patchChildren(parent: Element, oldChildren: VElement['children'], newChildren: VElement['children']): void {
   const ops = diffChildren(oldChildren, newChildren);
   const liveOld = Array.from(parent.childNodes);
@@ -138,11 +125,9 @@ export function patchChildren(parent: Element, oldChildren: VElement['children']
   }
 }
 
-/**
- * Claim a container for rendering: strip whitespace/comment nodes so the
- * live child list is exactly what the renderer put there. Without this,
- * formatting nodes from HTML shift the live indices used by patch ops.
- */
+/** Claim a container for rendering: strip whitespace/comment nodes so the
+ * live child list is exactly what the renderer put there — otherwise HTML
+ * formatting nodes shift the live indices used by patch ops. */
 export function ownContainer(container: HTMLElement): void {
   for (const node of Array.from(container.childNodes)) {
     if ((node.nodeType === Node.TEXT_NODE && !(node.textContent ?? '').trim()) || node.nodeType === Node.COMMENT_NODE) {

@@ -27,12 +27,10 @@ function toggleSidebar(): void {
   overlay.classList.toggle('show');
 }
 
-/** Show the info modal. */
 function showInfo(): void {
   modalBackdrop.classList.add('show');
 }
 
-/** Hide the info modal. */
 function hideInfo(): void {
   modalBackdrop.classList.remove('show');
 }
@@ -45,7 +43,6 @@ const sparkleTriggers = /\b(handsome|mama|hair)\b/i;
 
 /** Wire all event listeners (input, buttons, delegation) and show the welcome screen. */
 export function initApp(): void {
-  // ============ EVENT LISTENERS ============
   inputEl.addEventListener('input', () => {
     autoResize();
     sendBtn.disabled = inputEl.value.trim() === '' || getIsResponding();
@@ -77,7 +74,7 @@ export function initApp(): void {
   hamburger.addEventListener('click', toggleSidebar);
   overlay.addEventListener('click', toggleSidebar);
 
-  // Keyboard polish: Escape closes modal/sidebar, '/' focuses the input
+  // Escape closes modal/sidebar; '/' focuses the input
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       hideInfo();
@@ -91,7 +88,7 @@ export function initApp(): void {
     }
   });
 
-  // Event Delegation for history items (pre-baked fakes + persisted real chats)
+  // Event delegation
   const onHistoryClick = (e: MouseEvent) => {
     const item = (e.target as HTMLElement | null)?.closest<HTMLElement>('.history-item');
     if (item?.dataset.id) {
@@ -101,7 +98,6 @@ export function initApp(): void {
   document.getElementById('chat-history')?.addEventListener('click', onHistoryClick);
   document.getElementById('saved-chats')?.addEventListener('click', onHistoryClick);
 
-  // Event Delegation for suggestion chips and the regenerate button
   messagesEl.addEventListener('click', handleChipClick);
   messagesEl.addEventListener('click', (e) => {
     if ((e.target as HTMLElement | null)?.closest('.regenerate-btn')) {
@@ -110,12 +106,10 @@ export function initApp(): void {
     }
   });
 
-  // ============ INIT ============
   showWelcome();
   initChatFlow(createChatStore(localStorageAdapter()));
 }
 
-/** localStorage adapter for the chat store's storage seam (DOM access lives in ui/). */
 function localStorageAdapter(): ChatStorage {
   return {
     getItem: (key) => window.localStorage.getItem(key),

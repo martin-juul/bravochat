@@ -1,8 +1,6 @@
 /**
  * @file Conversation engine: DOM-free orchestration of chat behavior.
- * Owns the session-token race guard, response scheduling, responding state,
- * last-user-message memory, and chat switching. The `ui/` layer subscribes
- * to engine events and performs all rendering in reaction to them.
+ * Owns the session-token race guard, response scheduling, and chat switching.
  */
 
 import {
@@ -15,9 +13,6 @@ import {
 import type { HistoryMessage } from './histories';
 import { chatHistories } from './histories';
 
-// ============ SHARED TYPES ============
-
-/** Events the engine emits to subscribers (`type` discriminates the union). */
 export type EngineEvent =
   | { type: 'typing-started' }
   | { type: 'response-ready'; text: string; regenerable: boolean }
@@ -34,50 +29,26 @@ export interface ResumableChat {
 
 type EngineListener = (event: EngineEvent) => void;
 
-// ============ MODULE STATE ============
-
-/** increments on every chat switch; pending responses compare before firing */
-let sessionToken = 0;
-/** whether a mock AI response is currently pending */
+let sessionToken = 0; // increments on every chat switch; pending responses compare before firing
 let isResponding = false;
-/** key into `chatHistories`, or null for a live chat */
-let currentChatId: string | null = null;
-/** text of the most recent user message, for regeneration */
+let currentChatId: string | null = null; // key into `chatHistories`, or null for a live chat
 let lastUserText = '';
-
-/** whether the active chat is a resumable persisted chat */
-let resumed = false;
-
-// ============ SUBSCRIPTIONS (KTD1) ============
+let resumed = false; // whether the active chat is a resumable persisted chat
 
 const listeners = new Set<EngineListener>();
 
-/**
- * Register an engine-event listener.
- * @returns unsubscribe function
- */
 export function subscribe(listener: EngineListener): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
 
-/** Emit an engine event to all subscribers. */
 function emit(event: EngineEvent): void {
   for (const listener of listeners) listener(event);
 }
 
-// ============ GETTERS ============
-
-/** whether a mock AI response is currently pending */
 export const getIsResponding = (): boolean => isResponding;
-
-/** the active chat-history key, or null for a live chat */
 export const getCurrentChatId = (): string | null => currentChatId;
-
-/** the most recent user message text ("" before any send) */
 export const getLastUserText = (): string => lastUserText;
-
-// ============ INTERNALS ============
 
 /** Invalidate all in-flight responses that captured an older token. */
 function invalidateSession(): void {
@@ -85,10 +56,8 @@ function invalidateSession(): void {
   emit({ type: 'session-invalidated' });
 }
 
-/**
- * Schedule a response for the given user text after a randomized delay,
- * guarded by the session token captured at schedule time (R1, R2, KTD5).
- */
+/** Schedule a response after a randomized delay, guarded by the session token
+ * captured at schedule time. */
 function scheduleResponse(text: string, minMs: number, maxMs: number): void {
   const capturedToken = sessionToken;
   const delay = minMs + Math.random() * (maxMs - minMs);
@@ -102,12 +71,8 @@ function scheduleResponse(text: string, minMs: number, maxMs: number): void {
   }, delay);
 }
 
-// ============ COMMANDS ============
-
-/**
- * Send the current user message and schedule the mock AI reply.
- * No-op when the text is empty or a response is already pending.
- */
+/** Send the current user message and schedule the mock AI reply.
+ * No-op when the text is empty or a response is already pending. */
 export function send(text: string): void {
   const trimmed = typeof text === 'string' ? text.trim() : '';
   if (!trimmed || isResponding) return;
@@ -121,11 +86,9 @@ export function send(text: string): void {
   scheduleResponse(trimmed, 1000, 2500);
 }
 
-/**
- * Regenerate the last AI response: re-answer the last user message.
- * No-op when a response is pending or there is nothing to regenerate.
- * The UI removes the old AI bubble before calling this.
- */
+/** Regenerate the last AI response: re-answer the last user message.
+ * No-op when a response is pending or there is nothing to regenerate;
+ * the UI removes the old AI bubble before calling this. */
 export function regenerate(): void {
   if (isResponding || !lastUserText) return;
 
@@ -135,13 +98,9 @@ export function regenerate(): void {
   scheduleResponse(lastUserText, 800, 1600);
 }
 
-/**
- * Reset to a fresh live chat: invalidate pending responses, clear conversation
- * memory and chat id, and notify the UI to render the welcome screen.
- * Behavior-equivalent to the old startNewChat: clearing currentChatId here
- * makes the old `currentChatId === id && !welcomeShown` guard reducible to
- * plain id equality in loadHistory (see loadHistory).
- */
+/** Reset to a fresh live chat: invalidate pending responses, clear state,
+ * notify the UI to render the welcome screen. Clearing currentChatId makes
+ * the same-history re-click guard plain id equality in loadHistory. */
 export function startNewChat(): void {
   invalidateSession();
   isResponding = false;
@@ -152,13 +111,8 @@ export function startNewChat(): void {
   emit({ type: 'chat-reset' });
 }
 
-/**
- * Load a pre-baked history into the conversation, guarding against races.
- * No-op for an unknown id or when that history is already active (id-equality
- * guard; behavior-equivalent to the old combined welcomeShown guard because
- * startNewChat clears currentChatId, making the welcome-screen term redundant).
- * @param historyId key into `chatHistories`
- */
+/** Load a pre-baked history. No-op for an unknown id or when that history
+ * is already active (id-equality guard). */
 export function loadHistory(historyId: string): void {
   const conversation = chatHistories[historyId];
   if (!conversation) return;
@@ -173,12 +127,9 @@ export function loadHistory(historyId: string): void {
   emit({ type: 'history-loaded', conversation, historyId });
 }
 
-/**
- * Resume a persisted chat: load its conversation, restore the response
- * engine's no-repeat memory, and mark it continuable. Subsequent sends
- * append to this chat rather than starting fresh (R8).
- * @param chat the persisted chat to resume
- */
+/** Resume a persisted chat: load its conversation, restore the response
+ * engine's no-repeat memory, and mark it continuable — subsequent sends
+ * append to this chat rather than starting fresh. */
 export function resumeChat(chat: ResumableChat): void {
   if (!chat || !Array.isArray(chat.conversation)) return;
   invalidateSession();
@@ -191,9 +142,6 @@ export function resumeChat(chat: ResumableChat): void {
   emit({ type: 'history-loaded', conversation: chat.conversation, historyId: chat.id });
 }
 
-/** whether the active chat is a resumable persisted chat */
 export const isResumedChat = (): boolean => resumed;
-
-/** whether `historyId` names a pre-baked conversation */
 export const hasHistory = (historyId: string): boolean => Boolean(chatHistories[historyId]);
 

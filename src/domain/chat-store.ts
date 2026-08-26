@@ -1,7 +1,6 @@
 /**
  * @file Chat persistence store: threshold, deterministic titles, cap/eviction,
- * and an injectable storage seam (localStorage in the browser via the adapter
- * in ui/, a plain map in tests). DOM-free per the module boundary rule.
+ * and an injectable storage seam (DOM-free per the module boundary rule).
  */
 
 import { deriveTitle, garnishFor } from './titles';
@@ -17,25 +16,22 @@ export interface StoredMessage {
 export interface StoredChat {
   /** unique, `p:`-prefixed */
   id: string;
-  /** plain visible label (assigned once) */
+  /** visible label and hover garnish (assigned once) */
   title: string;
-  /** hover-text garnish (assigned once) */
   garnish: string;
-  /** full conversation */
   messages: StoredMessage[];
   /** recency marker for eviction ordering */
   updatedAt: number;
-  /** response-engine no-repeat snapshot (set by the UI layer on save) */
+  /** response-engine no-repeat snapshot */
   memory?: ConversationMemory;
 }
 
-/** Storage seam the store persists through (localStorage in the browser, a Map in tests). */
+/** Storage seam (localStorage in the browser, a Map in tests). */
 export interface ChatStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
 }
 
-/** The chat store API returned by `createChatStore`. */
 export interface ChatStore {
   recordMessage(id: string, sender: 'user' | 'ai', text: string, memory?: ConversationMemory): void;
   touch(id: string): void;
@@ -45,22 +41,18 @@ export interface ChatStore {
   nextId(): string;
 }
 
-const THRESHOLD = 3; // messages (user + AI combined) before persisting (R1)
-const CAP = 10; // max stored chats; oldest evicted (R4)
+const THRESHOLD = 3; // messages before persisting
+const CAP = 10; // max stored chats; oldest evicted
 const STORAGE_KEY = 'bravochat.savedChats';
 
-/**
- * Create a chat store over a storage backend.
- * The seam is synchronous get/set-by-key, so tests pass a Map-backed adapter.
- * @param now clock injection for deterministic eviction tests
- */
+/** Create a chat store over a storage backend (`now` injectable for tests). */
 export function createChatStore(storage: ChatStorage, now: () => number = () => Date.now()): ChatStore {
   let chats: StoredChat[] = read();
 
   /** below-threshold buffers per chat id */
   const pendingMessages = new Map<string, StoredMessage[]>();
 
-/** Minimal shape guard: valid JSON of the wrong form degrades to empty like parse failures. */
+  /** Minimal shape guard: valid JSON of the wrong form degrades to empty. */
   function isStoredChat(value: unknown): value is StoredChat {
     return (
       typeof value === 'object' && value !== null &&
@@ -84,14 +76,9 @@ export function createChatStore(storage: ChatStorage, now: () => number = () => 
     storage.setItem(STORAGE_KEY, JSON.stringify(chats));
   }
 
-  /**
-   * Record a message against a chat, persisting once the threshold clears.
-   * No-ops below THRESHOLD messages total (R1). Updates recency (R9).
-   * @param id the live chat's persisted id (created by the caller via nextId)
-   * @param memory response-engine snapshot to store with the latest message
-   */
+  /** Record a message against a chat, persisting once the threshold clears. */
   function recordMessage(id: string, sender: 'user' | 'ai', text: string, memory?: ConversationMemory): void {
-    // R1: messages accumulate in a pending buffer; the message that brings
+    // Messages accumulate in a pending buffer; the message that brings
     // the total to THRESHOLD flushes the whole buffer into storage.
     const stored = chats.find((c) => c.id === id);
     const pending = pendingMessages.get(id) ?? [];
@@ -118,14 +105,14 @@ export function createChatStore(storage: ChatStorage, now: () => number = () => 
       // Titles derive from user messages only: Johnny's AI lines are saturated
       // with routing keywords and would otherwise dominate the label.
       const userMessages = chat.messages.filter((m) => m.sender === 'user');
-      chat.title = deriveTitle(userMessages); // assigned once (R7)
+      chat.title = deriveTitle(userMessages); // title assigned once
       chat.garnish = garnishFor(userMessages);
     }
     evict();
     write();
   }
 
-  /** Cap enforcement (R4): drop oldest-updated beyond CAP. */
+  /** Cap enforcement: drop oldest-updated beyond CAP. */
   function evict(): void {
     if (chats.length <= CAP) return;
     const ordered = [...chats].sort((a, b) => a.updatedAt - b.updatedAt);
@@ -133,9 +120,7 @@ export function createChatStore(storage: ChatStorage, now: () => number = () => 
     chats = chats.filter((c) => !drop.has(c.id));
   }
 
-  /**
-   * Touch recency for a resumed chat so continued use refreshes eviction order (AE5).
-   */
+  /** Touch recency so continued use refreshes eviction order. */
   function touch(id: string): void {
     const chat = chats.find((c) => c.id === id);
     if (chat) {
@@ -145,7 +130,7 @@ export function createChatStore(storage: ChatStorage, now: () => number = () => 
     }
   }
 
-  /** newest-first for sidebar rendering (R3) */
+  /** newest-first for sidebar rendering */
   function listChats(): StoredChat[] {
     return [...chats].sort((a, b) => b.updatedAt - a.updatedAt);
   }
@@ -154,9 +139,7 @@ export function createChatStore(storage: ChatStorage, now: () => number = () => 
     return chats.find((c) => c.id === id);
   }
 
-  /**
-   * Replace a chat wholesale (resume path: engine replays state, UI saves snapshot).
-   */
+  /** Replace a chat wholesale (resume path). */
   function saveChat(id: string, chat: StoredChat): void {
     const i = chats.findIndex((c) => c.id === id);
     if (i >= 0) chats[i] = { ...chat, id, updatedAt: now() };
@@ -165,7 +148,7 @@ export function createChatStore(storage: ChatStorage, now: () => number = () => 
     write();
   }
 
-  /** Fresh persisted-chat id (namespace distinguishes real from fake data-ids). */
+  /** Fresh persisted-chat id (`p:` namespace distinguishes real from fake data-ids). */
   function nextId(): string {
     return `p:${now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
   }
@@ -173,5 +156,4 @@ export function createChatStore(storage: ChatStorage, now: () => number = () => 
   return { recordMessage, touch, listChats, getChat, saveChat, nextId };
 }
 
-/** The storage key this store persists under (exported for adapter/tests). */
 export const CHAT_STORAGE_KEY = STORAGE_KEY;
