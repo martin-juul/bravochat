@@ -93,7 +93,7 @@ export function diffChildren(oldChildren: VElement['children'], newChildren: VEl
   const ops: PatchOp[] = [];
   const usedOld = new Set<number>();
   const keyOf = (node: VNode | undefined): string | number | null =>
-    node && node.type === 'element' ? (node.key ?? null) : null;
+    node && node.type === 'element' ? node.key : null;
 
   for (let i = 0; i < newChildren.length; i++) {
     const m = match[i];
