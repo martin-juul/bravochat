@@ -14,23 +14,23 @@ const categoryPatterns: [TitleCategory, RegExp][] = routingPatterns.map(
 );
 
 /** Plain visible labels per dominant category. */
-const categoryLabels: Record<Exclude<TitleCategory, 'default'>, string> = {
+const categoryLabels = {
   date: 'Dating advice',
   mama: 'Mama stories',
   hair: 'Hair care tips',
   muscle: 'Workout talk',
   hello: 'Greetings',
-};
+} satisfies Record<TitleCategory, string>;
 
 /** Johnny garnish per category, surfaced as hover text. */
-const categoryGarnishes: Record<Exclude<TitleCategory, 'default'> | 'default', string> = {
+const categoryGarnishes = {
   date: '100% date-tested, sugar',
   mama: "Mama approved. Obviously. She's a saint",
   hair: 'Certified 47 minutes of spray',
   muscle: '100% bicep-related',
   hello: 'A confident entrance, every time',
   default: " Johnny was paying attention. Sort of",
-};
+} satisfies Record<TitleCategory | 'default', string>;
 
 /** Derive a plain title from user messages: dominant routing category wins
  * (ties break by first-seen for determinism); falls back to a capitalized

@@ -2,10 +2,9 @@
  * @file Rule-based response engine: keyword pools + routing (pure, DOM-free).
  */
 
-/** Response pool categories, mirroring `getResponse` routing. */
-export type ResponseCategory = 'default' | 'date' | 'mama' | 'muscle' | 'hair' | 'hello';
-
-export const responses: Record<ResponseCategory, string[]> = {
+/** Response pools. The category union derives from these keys — adding a
+ * category here plus a routing pattern is the whole edit. */
+export const responses = {
   default: [
     'Oh, mama! Did you just ask ME a question? Well buckle up, sugar, \'cause the answer is gonna be smoother than my hair after a fresh can of hairspray! *flexes* The answer is... YES. Always yes. Unless you\'re asking if I\'ve ever been turned down. Then the answer is also yes, but we don\'t talk about those times. *sniff*',
     'Hey there, sweet cheeks! I\'d love to answer that, but my calendar\'s booked solid with being handsome. Tomorrow? Also booked. Next week? Lookin\' pretty booked. Try never. *winks and adjusts collar*',
@@ -77,7 +76,9 @@ export const responses: Record<ResponseCategory, string[]> = {
     'Oh, MAMA! A new friend! *waves enthusiastically* I\'m Johnny. Johnny Bravo. I\'m 37, I live with my mama, and I\'m available most evenings. Just sayin\'.',
     'Well well well, look who decided to show up! *hair flip* Took you long enough. I\'ve been here. Standing. Posing. The usual. What\'s on your mind, sugar?',
   ],
-};
+} satisfies Record<string, readonly string[]>;
+
+export type ResponseCategory = keyof typeof responses;
 
 export const typingPhrases: string[] = [
   'Johnny is flexing his brain',

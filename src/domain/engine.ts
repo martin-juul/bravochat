@@ -7,7 +7,6 @@ import {
   composeResponse,
   resetConversation,
   restoreConversationState,
-  exportConversationState,
   type ConversationMemory,
 } from './responses';
 import type { HistoryMessage } from './histories';
@@ -29,11 +28,22 @@ export interface ResumableChat {
 
 type EngineListener = (event: EngineEvent) => void;
 
+/** Chat identity carried by every engine state — survives sends and replies,
+ * so getters stay truthful while responding and after a response lands. */
+interface ChatContext {
+  /** key into `chatHistories`, a persisted-chat id, or null for a live chat */
+  chatId: string | null;
+  /** whether the active chat is a resumable persisted chat */
+  resumed: boolean;
+  lastUserText: string;
+}
+
+/** Idle, or awaiting the scheduled mock reply. Only `awaiting` may hold a
+ * pending response, and it always carries the token captured at send time. */
+type EngineState = ({ kind: 'idle' } & ChatContext) | ({ kind: 'awaiting'; token: number } & ChatContext);
+
+let state: EngineState = { kind: 'idle', chatId: null, resumed: false, lastUserText: '' };
 let sessionToken = 0; // increments on every chat switch; pending responses compare before firing
-let isResponding = false;
-let currentChatId: string | null = null; // key into `chatHistories`, or null for a live chat
-let lastUserText = '';
-let resumed = false; // whether the active chat is a resumable persisted chat
 
 const listeners = new Set<EngineListener>();
 
@@ -46,9 +56,9 @@ function emit(event: EngineEvent): void {
   for (const listener of listeners) listener(event);
 }
 
-export const getIsResponding = (): boolean => isResponding;
-export const getCurrentChatId = (): string | null => currentChatId;
-export const getLastUserText = (): string => lastUserText;
+export const getIsResponding = (): boolean => state.kind === 'awaiting';
+export const getCurrentChatId = (): string | null => state.chatId;
+export const getLastUserText = (): string => state.lastUserText;
 
 /** Invalidate all in-flight responses that captured an older token. */
 function invalidateSession(): void {
@@ -56,17 +66,20 @@ function invalidateSession(): void {
   emit({ type: 'session-invalidated' });
 }
 
-/** Schedule a response after a randomized delay, guarded by the session token
- * captured at schedule time. */
-function scheduleResponse(text: string, minMs: number, maxMs: number): void {
+/** Schedule a response after a randomized delay. The callback is dropped
+ * unless the engine is still awaiting with the token captured at schedule
+ * time — a chat switch in between either left `idle` or took a newer token. */
+function scheduleResponse(minMs: number, maxMs: number): void {
+  // Callers enter `awaiting` with token = sessionToken immediately before this
+  // runs, so the live counter is the captured token by construction.
   const capturedToken = sessionToken;
   const delay = minMs + Math.random() * (maxMs - minMs);
 
   setTimeout(() => {
-    if (capturedToken !== sessionToken) return; // session changed — drop silently
+    if (state.kind !== 'awaiting' || state.token !== capturedToken) return; // session changed — drop silently
 
-    isResponding = false;
-    const response = composeResponse(text);
+    const response = composeResponse(state.lastUserText);
+    state = { ...state, kind: 'idle' };
     emit({ type: 'response-ready', text: response, regenerable: true });
   }, delay);
 }
@@ -75,39 +88,35 @@ function scheduleResponse(text: string, minMs: number, maxMs: number): void {
  * No-op when the text is empty or a response is already pending. */
 export function send(text: string): void {
   const trimmed = typeof text === 'string' ? text.trim() : '';
-  if (!trimmed || isResponding) return;
+  if (!trimmed || state.kind === 'awaiting') return;
 
-  if (currentChatId !== null && !resumed) currentChatId = null; // fresh live chat; resumed chats keep their id
+  if (state.chatId !== null && !state.resumed) state.chatId = null; // fresh live chat; resumed chats keep their id
 
-  lastUserText = trimmed;
-  isResponding = true;
+  state = { ...state, kind: 'awaiting', token: sessionToken, lastUserText: trimmed };
   emit({ type: 'typing-started' });
 
-  scheduleResponse(trimmed, 1000, 2500);
+  scheduleResponse(1000, 2500);
 }
 
 /** Regenerate the last AI response: re-answer the last user message.
  * No-op when a response is pending or there is nothing to regenerate;
  * the UI removes the old AI bubble before calling this. */
 export function regenerate(): void {
-  if (isResponding || !lastUserText) return;
+  if (state.kind === 'awaiting' || !state.lastUserText) return;
 
-  isResponding = true;
+  state = { ...state, kind: 'awaiting', token: sessionToken };
   emit({ type: 'typing-started' });
 
-  scheduleResponse(lastUserText, 800, 1600);
+  scheduleResponse(800, 1600);
 }
 
 /** Reset to a fresh live chat: invalidate pending responses, clear state,
- * notify the UI to render the welcome screen. Clearing currentChatId makes
+ * notify the UI to render the welcome screen. Clearing chatId makes
  * the same-history re-click guard plain id equality in loadHistory. */
 export function startNewChat(): void {
   invalidateSession();
-  isResponding = false;
+  state = { kind: 'idle', chatId: null, resumed: false, lastUserText: '' };
   resetConversation();
-  lastUserText = '';
-  currentChatId = null;
-  resumed = false;
   emit({ type: 'chat-reset' });
 }
 
@@ -116,14 +125,12 @@ export function startNewChat(): void {
 export function loadHistory(historyId: string): void {
   const conversation = chatHistories[historyId];
   if (!conversation) return;
-  if (currentChatId === historyId) return; // already viewing this history
+  if (state.chatId === historyId) return; // already viewing this history
 
   invalidateSession();
-  isResponding = false;
+  state = { kind: 'idle', chatId: historyId, resumed: false, lastUserText: '' };
   resetConversation();
 
-  currentChatId = historyId;
-  resumed = false;
   emit({ type: 'history-loaded', conversation, historyId });
 }
 
@@ -133,15 +140,12 @@ export function loadHistory(historyId: string): void {
 export function resumeChat(chat: ResumableChat): void {
   if (!chat || !Array.isArray(chat.conversation)) return;
   invalidateSession();
-  isResponding = false;
   restoreConversationState(chat.memory);
-  const lastUser = [...chat.conversation].reverse().find((m) => m.sender === 'user');
-  lastUserText = lastUser ? lastUser.text : '';
-  currentChatId = chat.id ?? null;
-  resumed = true;
+  const lastUser = chat.conversation.findLast((m) => m.sender === 'user');
+  state = { kind: 'idle', chatId: chat.id ?? null, resumed: true, lastUserText: lastUser ? lastUser.text : '' };
   emit({ type: 'history-loaded', conversation: chat.conversation, historyId: chat.id });
 }
 
-export const isResumedChat = (): boolean => resumed;
+export const isResumedChat = (): boolean => state.resumed;
 export const hasHistory = (historyId: string): boolean => Boolean(chatHistories[historyId]);
 
