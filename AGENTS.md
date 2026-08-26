@@ -84,6 +84,14 @@ When modifying or adding features, adhere to these performance rules:
 4. **Event Delegation:** Do not attach event listeners to individual chat items or suggestion chips. Use event delegation on the parent container (e.g., listening on `chat-history` and using `e.target.closest('.history-item')`).
 5. **Canvas over DOM:** Animated background effects are GPU-composited CSS animations (background patterns, transformed sprites) — rasterize once, never animate layout-triggering properties. A canvas rAF loop is reserved for on-demand effects and must self-stop when idle (see `background.ts`); do not create continuously-running rAF loops for ambient visuals.
 
+## Comment Style
+- **Comment the why, not the what.** Keep every comment that explains intent, invariants, or rationale (race guards, thresholds, index-shift caveats, diff pass ordering). Delete comments that restate the code (e.g., `/** Show the info modal. */` on `showInfo()`).
+- **No JSDoc spam.** Skip `@param`/`@returns` docs for obvious parameters; keep short summaries on exported functions only when they add something the signature doesn't say.
+- **File headers stay short** — one to three lines stating the module's role and layering obligations.
+- **No decorative banners** (`// ============ SECTION ============`) and no historical notes about superseded implementations.
+- **No plan-traceability identifiers** (R1, KTD5, AE2, ticket numbers, etc.) in comments or test titles. Comments must stand alone.
+- **Inline unit annotations are welcome** on constants and fields (`const THRESHOLD = 3; // messages before persisting`).
+
 ## Styling Guidelines (Johnny Bravo Theme)
 - All styles live in `src/assets/styles.css`, with colors defined via CSS variables in `:root`.
   - Primary: `--yellow` (#FFD93D)
