@@ -34,7 +34,7 @@ src/
     chat-flow.ts      Orchestration wiring: UI commands into the engine, engine events into rendering, persistence recording (initChatFlow)
     sidebar-chats.ts  vdom-rendered "Your Chats, Sugar" section for persisted chats (keyed, below the fakes)
     chrome.ts         Sidebar/overlay/modal wiring + all event listeners (exports initApp)
-    background.ts     Canvas engine: atomic pattern, floating shapes, sparkle particles (exports initBackground, spawnSparkles)
+    background.ts     Background system: CSS-animated pattern/shapes (sprites rasterized once) + on-demand sparkle canvas loop (exports initBackground, spawnSparkles)
   domain/           Pure, DOM-free logic
     responses.ts      Response engine: keyword pools, typing phrases, getResponse routing
     engine.ts         Conversation engine: session-token race guard, response scheduling, chat switching, event subscriptions (DOM-free)
@@ -53,12 +53,11 @@ src/
 
 ## Architecture
 
-### 1. Canvas Background System (`src/ui/background.ts`)
-All non-interactive visual effects are rendered on a single `<canvas id="bg-canvas">` to minimize DOM node count and avoid layout thrashing.
-- **Animation Loop:** Uses a single `requestAnimationFrame` loop with delta-time normalization to ensure smooth, frame-rate-independent animation.
-- **Rendered Elements:** The atomic background pattern, floating retro shapes (stars, rings), and the sparkle particle effects triggered on message send.
-- **Resize Handling:** The canvas automatically scales with `devicePixelRatio` for high-definition rendering on retina displays.
-- **Exports:** `initBackground()` wires resize handling and starts the loop; `spawnSparkles(x, y)` is called by `ui/chat-flow.ts` on send.
+### 1. Background System (`src/ui/background.ts`)
+Ambient visuals are zero-JS at idle: `initBackground()` rasterizes the atomic-pattern tile and the five floating-shape sprites **once** to offscreen canvases and hands them to CSS as background images (GPU-composited drift/bob/tilt animations defined in `styles.css`, with `prefers-reduced-motion` support).
+- **Sparkles:** the only canvas-rendered effect. `spawnSparkles(x, y)` — called by `ui/chat-flow.ts` on send — pushes 8 particles and starts an on-demand `requestAnimationFrame` loop with delta-time normalization; the loop self-stops (clearing `#fx-canvas`) once the last particle dies. Idle rAF count is zero.
+- **Resize Handling:** `#fx-canvas` scales with `devicePixelRatio` for high-definition rendering on retina displays.
+- **Exports:** `initBackground()` installs the CSS background; `spawnSparkles(x, y)` triggers the sparkle burst.
 
 ### 2. Mock AI Response Engine (`src/domain/responses.ts`)
 There is no backend or API. Responses are pre-written and selected via regex keyword matching.
@@ -83,7 +82,7 @@ When modifying or adding features, adhere to these performance rules:
 2. **Efficient DOM Clearing:** Use `messagesEl.replaceChildren()` instead of `innerHTML = ''` to clear chat containers. It is significantly faster and triggers less garbage collection.
 3. **Document Fragments:** When injecting multiple message nodes outside the vdom path, build them in a `DocumentFragment` and append the fragment to the DOM in a single operation. For message-list rendering, keyed-patch rendering through `src/vdom/dom.ts` supersedes manual fragment batching.
 4. **Event Delegation:** Do not attach event listeners to individual chat items or suggestion chips. Use event delegation on the parent container (e.g., listening on `chat-history` and using `e.target.closest('.history-item')`).
-5. **Canvas over DOM:** For any new animated, non-interactive background elements, add them to the `animateBg` Canvas loop in `background.ts`. Do not create absolutely-positioned DOM nodes for background effects.
+5. **Canvas over DOM:** Animated background effects are GPU-composited CSS animations (background patterns, transformed sprites) — rasterize once, never animate layout-triggering properties. A canvas rAF loop is reserved for on-demand effects and must self-stop when idle (see `background.ts`); do not create continuously-running rAF loops for ambient visuals.
 
 ## Styling Guidelines (Johnny Bravo Theme)
 - All styles live in `src/assets/styles.css`, with colors defined via CSS variables in `:root`.

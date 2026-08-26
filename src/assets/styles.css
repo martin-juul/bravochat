@@ -36,8 +36,41 @@ body {
     position: relative;
 }
 
-/* Canvas handles all background graphics */
-#bg-canvas {
+/* Background layers: CSS-animated pattern + shapes (see background.ts);
+   #fx-canvas runs JS only while sparkle particles are alive. */
+.bg-pattern {
+    position: fixed;
+    /* oversized by one tile so the transform loop never exposes an edge */
+    top: -140px;
+    left: -140px;
+    width: calc(100% + 280px);
+    height: calc(100% + 280px);
+    pointer-events: none;
+    z-index: 0;
+    background-repeat: repeat;
+    /* transform-only animation: fully GPU-composited, no per-frame paint */
+    animation: bg-drift 60s linear infinite;
+    will-change: transform;
+}
+
+.bg-shapes {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.bg-shape {
+    position: absolute;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    /* one full sine-like bob+tilt cycle = 20s (matches the old canvas motion) */
+    animation: shape-bob 20s ease-in-out infinite;
+    will-change: transform;
+}
+
+#fx-canvas {
     position: fixed;
     top: 0;
     left: 0;
@@ -45,6 +78,24 @@ body {
     height: 100%;
     pointer-events: none;
     z-index: 0;
+}
+
+@keyframes bg-drift {
+    from { transform: translate(0, 0); }
+    to { transform: translate(140px, 140px); }
+}
+
+@keyframes shape-bob {
+    0%   { transform: translateY(-15px) rotate(-15deg); }
+    50%  { transform: translateY(15px) rotate(15deg); }
+    100% { transform: translateY(-15px) rotate(-15deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bg-pattern,
+    .bg-shape {
+        animation: none;
+    }
 }
 
 .app {

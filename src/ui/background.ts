@@ -1,4 +1,13 @@
-/** A floating background shape. */
+/**
+ * Background system.
+ *
+ * The atomic pattern and floating shapes are GPU-composited CSS animations:
+ * they are rasterized ONCE to offscreen canvases here (pixel-identical to the
+ * old per-frame vector drawing) and handed to CSS as background images, so
+ * idle CPU is ~0. The canvas rAF loop runs ONLY while sparkle particles are
+ * alive (started by spawnSparkles, self-stopping when the last one dies).
+ */
+
 interface FloatingShape {
   /** normalized horizontal position (0–1) */
   x: number;
@@ -28,51 +37,7 @@ interface Sparkle {
   size: number;
 }
 
-/**
- * Canvas background system: atomic pattern, floating shapes, sparkle particles.
- * Single rAF loop with delta-time normalization; devicePixelRatio-aware.
- */
-const bgCanvas = document.getElementById('bg-canvas') as HTMLCanvasElement;
-
-/** Wire resize handling and start the single animation loop. */
-export function initBackground(): void {
-  window.addEventListener('resize', resizeBgCanvas);
-  resizeBgCanvas();
-  requestAnimationFrame(animateBg);
-}
-
-const bgCtx = bgCanvas.getContext('2d') as CanvasRenderingContext2D;
-let W = 0, H = 0;
-
-function resizeBgCanvas(): void {
-  const dpr = window.devicePixelRatio || 1;
-  W = window.innerWidth;
-  H = window.innerHeight;
-  bgCanvas.width = W * dpr;
-  bgCanvas.height = H * dpr;
-  bgCanvas.style.width = W + 'px';
-  bgCanvas.style.height = H + 'px';
-  bgCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to avoid compounding scale
-  bgCtx.scale(dpr, dpr);
-}
-
-const bgShapes: FloatingShape[] = [
-  {x: 0.08, y: 0.12, type: 'star5', color: 'rgba(255, 61, 127, 0.4)', size: 40, phase: 0},
-  {
-    x: 0.15,
-    y: 0.70,
-    type: 'ring_dot',
-    color1: 'rgba(46, 196, 182, 0.4)',
-    color2: 'rgba(255, 217, 61, 0.5)',
-    size: 50,
-    phase: -3,
-  },
-  {x: 0.90, y: 0.25, type: 'star4', color: 'rgba(255, 217, 61, 0.5)', size: 35, phase: -6},
-  {x: 0.92, y: 0.85, type: 'circle', color: 'rgba(255, 61, 127, 0.4)', size: 45, phase: -9},
-  {x: 0.05, y: 0.45, type: 'star4', color: 'rgba(46, 196, 182, 0.4)', size: 30, phase: -12},
-];
-
-const sparkles: Sparkle[] = [];
+const PATTERN_SIZE = 140;
 
 /**
  * Draw an N-pointed star path (no fill/stroke).
@@ -83,9 +48,17 @@ const sparkles: Sparkle[] = [];
  * @param outer outer radius
  * @param inner inner radius
  */
-function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, spikes: number, outer: number, inner: number): void {
-  let rot = Math.PI / 2 * 3;
-  let x = cx, y = cy;
+function drawStar(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  spikes: number,
+  outer: number,
+  inner: number,
+): void {
+  let rot = (Math.PI / 2) * 3;
+  let x = cx;
+  let y = cy;
   const step = Math.PI / spikes;
   ctx.beginPath();
   ctx.moveTo(cx, cy - outer);
@@ -103,8 +76,142 @@ function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, spikes:
   ctx.closePath();
 }
 
+/** Render one floating-shape sprite to a data URL (drawn once, animated by CSS). */
+function shapeSprite(s: FloatingShape): string {
+  const pad = 4; // keep strokes inside the sprite bounds
+  const c = document.createElement('canvas');
+  c.width = s.size + pad * 2;
+  c.height = s.size + pad * 2;
+  const ctx = c.getContext('2d') as CanvasRenderingContext2D;
+  const cx = c.width / 2;
+  const cy = c.height / 2;
+  const r = s.size / 2;
+
+  if (s.type === 'star5' || s.type === 'star4') {
+    ctx.fillStyle = s.color ?? 'transparent';
+    drawStar(ctx, cx, cy, s.type === 'star5' ? 5 : 4, r, r / 2);
+    ctx.fill();
+  } else if (s.type === 'ring_dot') {
+    ctx.strokeStyle = s.color1 ?? 'transparent';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = s.color2 ?? 'transparent';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r / 2, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.strokeStyle = s.color ?? 'transparent';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  return c.toDataURL();
+}
+
+/** The repeating atom-orbit tile, rendered once to a data URL. */
+function patternSprite(): string {
+  const c = document.createElement('canvas');
+  c.width = PATTERN_SIZE;
+  c.height = PATTERN_SIZE;
+  const ctx = c.getContext('2d') as CanvasRenderingContext2D;
+  ctx.strokeStyle = 'rgba(255, 61, 127, 0.18)';
+  ctx.lineWidth = 1.5;
+  ctx.fillStyle = 'rgba(255, 61, 127, 0.18)';
+  const cx = 50;
+  const cy = 50;
+  ctx.beginPath();
+  ctx.moveTo(cx + 50, cy + 15);
+  ctx.lineTo(cx + 55, cy + 40);
+  ctx.lineTo(cx + 80, cy + 45);
+  ctx.lineTo(cx + 60, cy + 55);
+  ctx.lineTo(cx + 65, cy + 80);
+  ctx.lineTo(cx + 50, cy + 65);
+  ctx.lineTo(cx + 35, cy + 80);
+  ctx.lineTo(cx + 40, cy + 55);
+  ctx.lineTo(cx + 20, cy + 45);
+  ctx.lineTo(cx + 45, cy + 40);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx + 50, cy + 50, 3, 0, Math.PI * 2);
+  ctx.fill();
+  return c.toDataURL();
+}
+
+const bgShapes: FloatingShape[] = [
+  { x: 0.08, y: 0.12, type: 'star5', color: 'rgba(255, 61, 127, 0.4)', size: 40, phase: 0 },
+  {
+    x: 0.15,
+    y: 0.7,
+    type: 'ring_dot',
+    color1: 'rgba(46, 196, 182, 0.4)',
+    color2: 'rgba(255, 217, 61, 0.5)',
+    size: 50,
+    phase: -3,
+  },
+  { x: 0.9, y: 0.25, type: 'star4', color: 'rgba(255, 217, 61, 0.5)', size: 35, phase: -6 },
+  { x: 0.92, y: 0.85, type: 'circle', color: 'rgba(255, 61, 127, 0.4)', size: 45, phase: -9 },
+  { x: 0.05, y: 0.45, type: 'star4', color: 'rgba(46, 196, 182, 0.4)', size: 30, phase: -12 },
+];
+
+/**
+ * Install the CSS-animated background: the repeating atom pattern and the
+ * five floating shapes (sprite data URLs + per-shape position/size/phase).
+ * No animation loop is started — CSS owns all continuous motion.
+ */
+export function initBackground(): void {
+  const pattern = document.querySelector<HTMLElement>('.bg-pattern');
+  if (pattern) pattern.style.backgroundImage = `url(${patternSprite()})`;
+
+  const shapesHost = document.getElementById('bg-shapes');
+  if (!shapesHost) return;
+  for (const s of bgShapes) {
+    const el = document.createElement('div');
+    el.className = 'bg-shape';
+    el.style.left = `${s.x * 100}%`;
+    el.style.top = `${s.y * 100}%`;
+    el.style.width = `${s.size + 8}px`;
+    el.style.height = `${s.size + 8}px`;
+    el.style.backgroundImage = `url(${shapeSprite(s)})`;
+    el.style.animationDelay = `${s.phase}s`;
+    shapesHost.appendChild(el);
+  }
+}
+
+// ============ Sparkles (the only canvas-rendered, JS-animated effect) ============
+
+const fxCanvas = document.getElementById('fx-canvas') as HTMLCanvasElement;
+const fxCtx = fxCanvas.getContext('2d') as CanvasRenderingContext2D;
+let W = 0;
+let H = 0;
+
+function resizeFxCanvas(): void {
+  const dpr = window.devicePixelRatio || 1;
+  W = window.innerWidth;
+  H = window.innerHeight;
+  fxCanvas.width = W * dpr;
+  fxCanvas.height = H * dpr;
+  fxCanvas.style.width = W + 'px';
+  fxCanvas.style.height = H + 'px';
+  fxCtx.setTransform(1, 0, 0, 1, 0, 0);
+  fxCtx.scale(dpr, dpr);
+}
+
+window.addEventListener('resize', resizeFxCanvas);
+resizeFxCanvas();
+
+const sparkles: Sparkle[] = [];
+
+/** whether the sparkle loop is currently scheduled */
+let loopRunning = false;
+let lastTime = performance.now();
+
 /**
  * Emit an 8-particle sparkle burst centered on (x, y) — called on message send.
+ * Starts the canvas loop on demand; it self-stops when the last particle dies.
  * @param x viewport x
  * @param y viewport y
  */
@@ -114,7 +221,8 @@ export function spawnSparkles(x: number, y: number): void {
     const angle = (i / 8) * Math.PI * 2;
     const distance = 60 + Math.random() * 40;
     sparkles.push({
-      x, y,
+      x,
+      y,
       vx: Math.cos(angle) * distance * 0.03,
       vy: Math.sin(angle) * distance * 0.03 - 1.5,
       life: 1,
@@ -124,117 +232,50 @@ export function spawnSparkles(x: number, y: number): void {
       size: 6 + Math.random() * 3,
     });
   }
+  if (!loopRunning) {
+    loopRunning = true;
+    lastTime = performance.now();
+    requestAnimationFrame(animateSparkles);
+  }
 }
 
-let bgTime = 0;
-let lastTime = performance.now();
-
 /**
- * Single animation frame: clear, then draw pattern, floating shapes, sparkles.
+ * One sparkle frame. Returns early (ending the loop) once no particles remain.
  */
-function animateBg(now: DOMHighResTimeStamp): void {
-  const dt = Math.min((now - lastTime) / 16.666, 3); // Delta time, capped to avoid jumps
-  lastTime = now;
-  bgTime += dt / 60; // Convert to seconds roughly
-
-  bgCtx.clearRect(0, 0, W, H);
-
-  // 1. Atomic background pattern
-  bgCtx.save();
-  bgCtx.strokeStyle = 'rgba(255, 61, 127, 0.18)';
-  bgCtx.lineWidth = 1.5;
-  bgCtx.fillStyle = 'rgba(255, 61, 127, 0.18)';
-
-  const pSize = 140;
-  const pOffset = (bgTime * 2.33) % pSize; // Match original 60s linear drift speed
-
-  for (let x = -pSize; x < W + pSize; x += pSize) {
-    for (let y = -pSize; y < H + pSize; y += pSize) {
-      const cx = x + pOffset;
-      const cy = y + pOffset;
-      bgCtx.beginPath();
-      bgCtx.moveTo(cx + 50, cy + 15);
-      bgCtx.lineTo(cx + 55, cy + 40);
-      bgCtx.lineTo(cx + 80, cy + 45);
-      bgCtx.lineTo(cx + 60, cy + 55);
-      bgCtx.lineTo(cx + 65, cy + 80);
-      bgCtx.lineTo(cx + 50, cy + 65);
-      bgCtx.lineTo(cx + 35, cy + 80);
-      bgCtx.lineTo(cx + 40, cy + 55);
-      bgCtx.lineTo(cx + 20, cy + 45);
-      bgCtx.lineTo(cx + 45, cy + 40);
-      bgCtx.closePath();
-      bgCtx.stroke();
-      bgCtx.beginPath();
-      bgCtx.arc(cx + 50, cy + 50, 3, 0, Math.PI * 2);
-      bgCtx.fill();
-    }
+function animateSparkles(now: DOMHighResTimeStamp): void {
+  if (sparkles.length === 0) {
+    fxCtx.clearRect(0, 0, W, H);
+    loopRunning = false;
+    return;
   }
-  bgCtx.restore();
 
-  // 2. Floating shapes
-  bgShapes.forEach(s => {
-    const baseX = s.x * W;
-    const baseY = s.y * H;
-    const y = baseY - Math.sin(bgTime * 0.314 + s.phase) * 15; // 0.314 = 20s cycle
-    const rot = Math.sin(bgTime * 0.314 + s.phase) * (15 * Math.PI / 180);
+  const dt = Math.min((now - lastTime) / 16.666, 3);
+  lastTime = now;
 
-    bgCtx.save();
-    bgCtx.translate(baseX, y);
-    bgCtx.rotate(rot);
-
-    if (s.type === 'star5') {
-      bgCtx.fillStyle = s.color ?? 'transparent';
-      drawStar(bgCtx, 0, 0, 5, s.size / 2, s.size / 4);
-      bgCtx.fill();
-    } else if (s.type === 'star4') {
-      bgCtx.fillStyle = s.color ?? 'transparent';
-      drawStar(bgCtx, 0, 0, 4, s.size / 2, s.size / 4);
-      bgCtx.fill();
-    } else if (s.type === 'ring_dot') {
-      bgCtx.strokeStyle = s.color1 ?? 'transparent';
-      bgCtx.lineWidth = 3;
-      bgCtx.beginPath();
-      bgCtx.arc(0, 0, s.size / 2, 0, Math.PI * 2);
-      bgCtx.stroke();
-      bgCtx.fillStyle = s.color2 ?? 'transparent';
-      bgCtx.beginPath();
-      bgCtx.arc(0, 0, s.size / 4, 0, Math.PI * 2);
-      bgCtx.fill();
-    } else if (s.type === 'circle') {
-      bgCtx.strokeStyle = s.color ?? 'transparent';
-      bgCtx.lineWidth = 2.5;
-      bgCtx.beginPath();
-      bgCtx.arc(0, 0, s.size / 2, 0, Math.PI * 2);
-      bgCtx.stroke();
-    }
-    bgCtx.restore();
-  });
-
-  // 3. Sparkles
+  fxCtx.clearRect(0, 0, W, H);
   for (let i = sparkles.length - 1; i >= 0; i--) {
     const p = sparkles[i];
     if (!p) continue;
-    p.x += p.vx;
-    p.y += p.vy;
-    p.vy += 0.1; // Gravity
-    p.rotation += p.rotSpeed;
-    p.life -= 0.02;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 0.1 * dt;
+    p.rotation += p.rotSpeed * dt;
+    p.life -= 0.02 * dt;
 
     if (p.life <= 0) {
       sparkles.splice(i, 1);
       continue;
     }
 
-    bgCtx.save();
-    bgCtx.translate(p.x, p.y);
-    bgCtx.rotate(p.rotation);
-    bgCtx.globalAlpha = Math.max(0, p.life);
-    bgCtx.fillStyle = p.color;
-    drawStar(bgCtx, 0, 0, 4, p.size, p.size / 2);
-    bgCtx.fill();
-    bgCtx.restore();
+    fxCtx.save();
+    fxCtx.translate(p.x, p.y);
+    fxCtx.rotate(p.rotation);
+    fxCtx.globalAlpha = Math.max(0, p.life);
+    fxCtx.fillStyle = p.color;
+    drawStar(fxCtx, 0, 0, 4, p.size, p.size / 2);
+    fxCtx.fill();
+    fxCtx.restore();
   }
 
-  requestAnimationFrame(animateBg);
+  requestAnimationFrame(animateSparkles);
 }
