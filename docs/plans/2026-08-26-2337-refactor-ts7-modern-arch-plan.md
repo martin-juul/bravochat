@@ -153,6 +153,7 @@ Invariants enforced by the union: only `Awaiting` can be responding, and it alwa
   1. `responses`: annotate with `as const`/`satisfies` so `ResponseCategory` derives via `keyof typeof`; keep pool immutability so the no-repeat memory can rely on it.
   2. `titles.ts`: `categoryLabels`/`categoryGarnishes` switch to `satisfies` keyed on the derived category type; `categoryPatterns` mapping gains const type parameters if they sharpen the tuple inference.
   3. `histories.ts`: `chatHistories` gets `satisfies` so key typos against consumer lookups surface; `HistoryMessage.sender` stays the literal union.
+     *Descoped during execution (readability gate):* `satisfies` over a `Record<string, …>` annotation checks nothing — keys are dynamic — and the runtime cross-check against `index.html` data-ids in `responses.test.ts` already catches mismatches.
   4. Apply template-literal/`NoInfer` typing only if a concrete site benefits — expected: none; do not force.
 - **Patterns to follow:** existing type-guard style in `src/domain/chat-store.ts`.
 - **Test scenarios:**

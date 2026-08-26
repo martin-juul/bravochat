@@ -7,7 +7,6 @@ import {
   composeResponse,
   resetConversation,
   restoreConversationState,
-  exportConversationState,
   type ConversationMemory,
 } from './responses';
 import type { HistoryMessage } from './histories';
@@ -71,7 +70,9 @@ function invalidateSession(): void {
  * unless the engine is still awaiting with the token captured at schedule
  * time — a chat switch in between either left `idle` or took a newer token. */
 function scheduleResponse(minMs: number, maxMs: number): void {
-  const capturedToken = state.kind === 'awaiting' ? state.token : -1;
+  // Callers enter `awaiting` with token = sessionToken immediately before this
+  // runs, so the live counter is the captured token by construction.
+  const capturedToken = sessionToken;
   const delay = minMs + Math.random() * (maxMs - minMs);
 
   setTimeout(() => {

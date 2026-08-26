@@ -257,6 +257,12 @@ describe('resumeChat', () => {
     ] });
     engine.send('more talk');
     expect(engine.getCurrentChatId()).toBe('p:x1');
+
+    // The chat context must survive the response firing too — the sidebar
+    // active-highlight reads these getters from the response-ready handler.
+    await vi.advanceTimersByTimeAsync(2500);
+    expect(engine.getCurrentChatId()).toBe('p:x1');
+    expect(engine.isResumedChat()).toBe(true);
   });
 
   it('restores no-repeat memory across the resume boundary', async () => {
